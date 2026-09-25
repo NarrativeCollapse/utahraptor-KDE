@@ -9,7 +9,7 @@
 #   5. answer Plymouth's passphrase prompt
 #   6. reach the graphical target and confirm the booted image is the
 #      offline embedded payload, with no network route out
-#   7. log in at the GDM greeter and prove a GNOME session is running
+#   7. log in at the Plasma Login Manager greeter and prove a Plasma session is running
 #
 # A trailing check, after phase 7's desktop and fastfetch evidence, confirms
 # the Brewfile's default Flatpak set is also present offline -- deferred
@@ -43,6 +43,15 @@ TEST_PASSWORD="${UTAH_E2E_PASSWORD:-utahtest}"
 # consults a user installation that does not exist and aborts instead of
 # falling back.
 TERMINAL_APP="${UTAH_E2E_TERMINAL:-com.mitchellh.ghostty}"
+# The display manager unit and the per-user desktop shell process whose
+# presence proves a graphical session, not a console, is running.
+DM_UNIT="${UTAH_E2E_DM_UNIT:-plasmalogin.service}"
+SHELL_PROC="${UTAH_E2E_SHELL_PROC:-plasmashell}"
+# A key sent at the greeter before the password. GDM needed Enter to open the
+# password field of the preselected account; Plasma Login Manager focuses the
+# password field of the only account, so nothing is sent by default. Set
+# UTAH_E2E_GREETER_PRE_KEY=ret if the greeter ever needs it again.
+GREETER_PRE_KEY="${UTAH_E2E_GREETER_PRE_KEY-}"
 
 # Display size and terminal geometry for the screenshots. These exist because
 # fastfetch with its logo needs about 90 columns -- roughly 33 for the logo
@@ -153,7 +162,7 @@ shot() {
 }
 
 # Type a string at whatever has focus, then Enter. Same mechanism the LUKS
-# unlock uses, because the GDM greeter is equally invisible to the serial port.
+# unlock uses, because the login greeter is equally invisible to the serial port.
 send_keys() {
     local sock="$1" text="$2" ch key i
     for (( i=0; i<${#text}; i++ )); do
@@ -288,7 +297,7 @@ for i in $(seq 1 90); do
 done
 
 echo "=== Phase 2/7: prove the live session reached a desktop ==="
-# The live ISO autologins liveuser into GNOME. If that silently degraded to a
+# The live ISO autologins liveuser into Plasma. If that silently degraded to a
 # text console the installer would still be reachable over SSH and every other
 # check here would pass, so assert the session explicitly.
 for i in $(seq 1 60); do
@@ -321,16 +330,16 @@ if (( ! ready_seen )); then
     fail "live serial log never showed the UTAH_LIVE_READY ready marker"
 fi
 
-ssh_live 'systemctl is-active gdm.service' 2>/dev/null | grep -qx active \
-    || fail "gdm is not running in the live session"
-echo "  gdm.service: active"
+ssh_live "systemctl is-active ${DM_UNIT}" 2>/dev/null | grep -qx active \
+    || fail "${DM_UNIT} is not running in the live session"
+echo "  ${DM_UNIT}: active"
 
 for i in $(seq 1 30); do
-    if ssh_live 'pgrep -u liveuser -x gnome-shell >/dev/null' 2>/dev/null; then break; fi
-    [[ "$i" -eq 30 ]] && { shot live-no-shell "${MONITOR_LIVE}" || true; fail "no gnome-shell running for liveuser"; }
+    if ssh_live "pgrep -u liveuser -x ${SHELL_PROC} >/dev/null" 2>/dev/null; then break; fi
+    [[ "$i" -eq 30 ]] && { shot live-no-shell "${MONITOR_LIVE}" || true; fail "no ${SHELL_PROC} running for liveuser"; }
     sleep 5
 done
-echo "  gnome-shell: running as liveuser"
+echo "  ${SHELL_PROC}: running as liveuser"
 
 live_session_type="$(ssh_live "loginctl show-session \$(loginctl show-user liveuser -p Display --value) -p Type --value" 2>/dev/null || true)"
 echo "  live session type: ${live_session_type:-unknown}"
@@ -584,9 +593,9 @@ if [[ -n "${UTAH_E2E_PAYLOAD_CHECK-x}" ]]; then
 fi
 
 echo "=== Phase 7/7: log in and prove the desktop starts ==="
-ssh_target 'systemctl is-active gdm.service' 2>/dev/null | grep -qx active \
-    || fail "gdm is not running on the installed system"
-echo "  gdm.service: active"
+ssh_target "systemctl is-active ${DM_UNIT}" 2>/dev/null | grep -qx active \
+    || fail "${DM_UNIT} is not running on the installed system"
+echo "  ${DM_UNIT}: active"
 shot installed-greeter "${MONITOR_INSTALLED}"
 
 # Arrange for a terminal to open as part of the session that is about to
@@ -647,17 +656,20 @@ X-GNOME-Autostart-enabled=true
 EOF
 " || fail "could not write the terminal autostart entry"
 
-# Type the password at the greeter. GDM offers the single account already
-# selected, so Enter opens the password field and the password submits it.
+# Type the password at the greeter. The installer created a single account,
+# which the greeter offers with its password field focused; the password and
+# Enter submit it. GREETER_PRE_KEY covers a greeter that needs a key first.
 echo "Logging in at the greeter as ${TEST_USER}..."
-monitor "${MONITOR_INSTALLED}" "sendkey ret" || true
+if [[ -n "${GREETER_PRE_KEY}" ]]; then
+    monitor "${MONITOR_INSTALLED}" "sendkey ${GREETER_PRE_KEY}" || true
+fi
 sleep 3
 send_keys "${MONITOR_INSTALLED}" "${TEST_PASSWORD}"
 
-echo "Waiting for a GNOME session..."
+echo "Waiting for a Plasma session..."
 logged_in=0
 for i in $(seq 1 48); do
-    if ssh_target "pgrep -u ${TEST_USER} -x gnome-shell >/dev/null" 2>/dev/null; then
+    if ssh_target "pgrep -u ${TEST_USER} -x ${SHELL_PROC} >/dev/null" 2>/dev/null; then
         logged_in=1; break
     fi
     sleep 5
@@ -666,72 +678,9 @@ if (( ! logged_in )); then
     shot installed-login-failed "${MONITOR_INSTALLED}" || true
     echo "--- sessions ---" >&2
     ssh_target 'loginctl list-sessions --no-legend' >&2 2>/dev/null || true
-    fail "no gnome-shell for ${TEST_USER} after logging in at the greeter"
+    fail "no ${SHELL_PROC} for ${TEST_USER} after logging in at the greeter"
 fi
-echo "  gnome-shell: running as ${TEST_USER}"
-
-# A shell session that started is not the same as one whose extensions loaded.
-# Assert the enabled extensions raised no load-time error this boot -- the
-# GNOME-51 breaks this test exists to catch (GSConnect's clipboard final-type;
-# Search Light's dropped shader API, before it was removed) surface here as "Error"/"TypeError" lines
-# against the extension uuid. UTAH_E2E_EXTENSIONS lists the ones that must load
-# clean; empty to skip.
-#
-# Every listed extension is evaluated before the test gives its verdict, and
-# the failures are reported together. Stopping at the first one costs a whole
-# run per broken extension -- this check is the last step of a ~35-minute
-# six-phase test, so serially discovering two known GNOME 51 breaks (the
-# GSConnect clipboard final-type and Search Light's dropped shader API, which
-# are separate fixes) takes two runs to learn what one run already knew. The
-# run still fails; it just says everything it found.
-EXT_CHECK="${UTAH_E2E_EXTENSIONS-gsconnect@andyholmes.github.io}"
-if [[ -n "${EXT_CHECK}" ]]; then
-    ext_failures=()
-    for uuid in ${EXT_CHECK}; do
-        # State is the authoritative signal: an extension that threw at enable
-        # is ERROR/OUT_OF_DATE, one that loaded is ACTIVE. Grepping the journal
-        # for "Error" also catches an extension's own deliberate warnings (the
-        # GSConnect guard logs one when it degrades the clipboard portal), so
-        # trust the state and only surface journal lines as diagnostics.
-        # gnome-extensions asks the shell over D-Bus, and the shell answers
-        # only once it has finished loading extensions -- which is strictly
-        # after the gnome-shell process appears. Polling here rather than
-        # reading once is the difference between a real verdict and a blank.
-        state=""
-        for _ in $(seq 1 24); do
-            state="$(ssh_target "env BASH_ENV=/dev/null bash --noprofile --norc -c \"gnome-extensions info '${uuid}' 2>/dev/null\"" 2>/dev/null | grep -aE '^[[:space:]]*State:' | tail -1 | awk '{print $NF}' | tr -d '[:space:]' || true)"
-            [[ -n "${state}" ]] && break
-            sleep 5
-        done
-        if [[ -z "${state}" ]]; then
-            # Two minutes of polling a shell that is already up and still no
-            # state is not an inconclusive probe -- it means the assertion is
-            # not running, which is worse than a red run because it reads as
-            # green. (It did exactly that once: an over-escaped awk sent
-            # `\$NF' to awk, every read came back empty, and the check passed
-            # while asserting nothing.) Fail, and print the raw output.
-            echo "  extension ${uuid}: state could not be read" >&2
-            ssh_target "env BASH_ENV=/dev/null bash --noprofile --norc -c \"gnome-extensions info '${uuid}' 2>&1 | head -20\"" >&2 2>/dev/null || true
-            shot "installed-ext-unreadable-${uuid%%@*}" "${MONITOR_INSTALLED}" || true
-            ext_failures+=("${uuid}: state could not be read")
-            continue
-        fi
-        if [[ "${state}" != "ACTIVE" && "${state}" != "ENABLED" ]]; then
-            echo "  extension ${uuid}: state=${state}" >&2
-            ssh_target "env BASH_ENV=/dev/null bash --noprofile --norc -c \"journalctl --user -b --no-pager 2>/dev/null | grep -F '${uuid}' | grep -iE 'Error|TypeError|Exception|not a function' | tail -5\"" >&2 2>/dev/null || true
-            shot "installed-ext-error-${uuid%%@*}" "${MONITOR_INSTALLED}" || true
-            ext_failures+=("${uuid}: state=${state}")
-            continue
-        fi
-        echo "  extension ${uuid}: ${state}"
-    done
-    if (( ${#ext_failures[@]} > 0 )); then
-        for failure in "${ext_failures[@]}"; do
-            echo "  FAILED: ${failure}" >&2
-        done
-        fail "${#ext_failures[@]} extension(s) did not reach ACTIVE on GNOME 51"
-    fi
-fi
+echo "  ${SHELL_PROC}: running as ${TEST_USER}"
 
 # Ask for the user's *graphical* session by id rather than taking the first
 # session that mentions them: the SSH login this test is using is also a
@@ -841,7 +790,7 @@ fi
 
 echo
 echo "PASS: Utah installed to an encrypted disk, unlocked, and ${TEST_USER} logged"
-echo "      in to a GNOME session on it."
+echo "      in to a Plasma session on it."
 echo "Screenshots: ${SHOTS}"
 
 # Publish the screenshots as the record of what passed. A run that only prints
@@ -875,13 +824,13 @@ the check beside it passed.
 | Live ISO | \`$(basename "${ISO}")\`, ${iso_size} |
 | Installed image | \`${PAYLOAD_IMAGE}\` |
 | Root filesystem | btrfs on LUKS2, passphrase unlock |
-| Live session | GNOME, ${live_session_type:-unknown} |
-| Installed session | GNOME, ${session_type:-unknown}, user \`${TEST_USER}\` |
+| Live session | Plasma, ${live_session_type:-unknown} |
+| Installed session | Plasma, ${session_type:-unknown}, user \`${TEST_USER}\` |
 
 ## What passed
 
 1. The live ISO boots and its session reaches \`graphical.target\` with
-   \`gdm.service\` active and \`gnome-shell\` running — not a text console
+   \`${DM_UNIT}\` active and \`${SHELL_PROC}\` running — not a text console
    that merely answers SSH.
 2. The installer creates a LUKS2 volume and installs from the ISO's embedded
    container store, with no network.
@@ -891,7 +840,7 @@ the check beside it passed.
 6. \`bootc status\` on the installed system reports the booted image as the
    offline embedded payload, not a substitute reached over a network this
    guest does not have.
-7. The user logs in at the GDM greeter and gets a GNOME session.
+7. The user logs in at the Plasma Login Manager greeter and gets a Plasma session.
 8. Every default Flatpak in the Brewfile contract is present and listed by
    \`flatpak\` on the installed, network-isolated system.
 
@@ -908,7 +857,7 @@ desktop from inside it. Everything below is how it got there.
 
 The desktop the ISO boots into, with the installer available.
 
-### GDM greeter on the installed system
+### Login greeter on the installed system
 ![Greeter](screenshots/installed-greeter.png)
 
 After the encrypted root has been unlocked and the system has reached the
@@ -917,7 +866,7 @@ graphical target. This is what proves the boot did not stop at a console.
 ### Logged in
 ![Desktop](screenshots/installed-desktop.png)
 
-\`${TEST_USER}\`'s GNOME session, entered by typing the password at the
+\`${TEST_USER}\`'s Plasma session, entered by typing the password at the
 greeter above.
 
 EOF
@@ -939,7 +888,7 @@ block = (
     f"{begin}\n"
     f"[![Verified end to end]({shot})](docs/verification/README.md)\n\n"
     f"*Verified end to end on {captured}: installed to a LUKS2-encrypted disk, "
-    f"unlocked at the Plymouth prompt, and logged in to a GNOME session — "
+    f"unlocked at the Plymouth prompt, and logged in to a Plasma session — "
     f"the shot above is fastfetch inside that booted install. "
     f"Full record and more screenshots in "
     f"[docs/verification](docs/verification/README.md), refreshed by "

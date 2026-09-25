@@ -135,7 +135,7 @@ def qemu_screendump(sock: str, path: str) -> tuple:
       QEMU uninitialized: all zeros → 0.0
       OVMF/bootloader:   dim text on black → typically 0.5–5
       Plymouth prompt:   nearly all-black → typically 0.5–2, STABLE
-      GDM/GNOME:         colourful UI → typically higher
+      Login greeter:     colourful UI → typically higher
 
     md5_hash — MD5 of the full PPM file.  Used to detect when the display
       has stopped changing (Plymouth is waiting for passphrase input).
@@ -186,7 +186,7 @@ def qemu_send_passphrase(sock: str, passphrase: str):
 
 
 def qemu_check_serial(serial_log: str) -> str:
-    """Return 'plymouth', 'gdm', 'emergency', or '' if no marker yet.
+    """Return 'plymouth', 'greeter', 'emergency', or '' if no marker yet.
 
     Checks for systemd unit messages that appear on the serial console when the
     installed system has console=ttyS0 in its kernel cmdline.
@@ -198,18 +198,18 @@ def qemu_check_serial(serial_log: str) -> str:
     except OSError:
         return ""
     # Strip ANSI escape codes and collapse whitespace so that systemd status
-    # lines like "  OK  ] Started \n<ESC>gdm.service\n<ESC>- GNOME Display…"
+    # lines like "  OK  ] Started \n<ESC>plasmalogin.service\n<ESC>- Plasma Login…"
     # become searchable as a single string.
     content = re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', raw)
     content_flat = ' '.join(content.split())
     if "emergency mode" in content or "emergency shell" in content:
         return "emergency"
     # systemd serial output (ANSI-stripped, whitespace-collapsed):
-    #   "OK ] Started gdm.service - GNOME Display Manager."
-    if "Started gnome-initial-setup" in content_flat:
-        return "gnome-initial-setup"
-    if "Started gdm.service" in content_flat or "Started GNOME Display Manager" in content_flat:
-        return "gdm"
+    #   "OK ] Started plasmalogin.service - Plasma Login Manager."
+    # The image has no first-run setup app (the installer creates the account),
+    # so the greeter starting is the last boot milestone.
+    if "Started plasmalogin.service" in content_flat or "Started Plasma Login Manager" in content_flat:
+        return "greeter"
     # Plymouth passphrase prompt — no ANSI codes, plain text on serial.
     if "Please enter passphrase for disk" in raw:
         return "plymouth"
@@ -378,7 +378,7 @@ def run_qemu(monitor_sock: str, passphrase: str, serial_log: str, ssh_port: int 
     passphrase_time = time.time()
     passphrase_hash = prev_hash  # Plymouth hash at time of passphrase send
     screen_changed = False
-    gnome_stable_count = 0
+    greeter_stable_count = 0
 
     while time.time() < deadline:
         result = qemu_check_serial(serial_log)
@@ -433,26 +433,20 @@ def run_qemu(monitor_sock: str, passphrase: str, serial_log: str, ssh_port: int 
                 flush=True,
             )
 
-        # Primary success path: serial log confirms gnome-initial-setup or GDM.
-        # gnome-initial-setup fires after GDM — screenshot taken immediately.
-        # If only GDM is seen, wait 30s as a fallback in case g-i-s is slow.
-        if result == "gnome-initial-setup":
-            print("[luks-unlock] gnome-initial-setup started (serial confirmed) — taking screenshot", flush=True)
-            brightness, md5 = qemu_screendump(monitor_sock, snap)
-            print(f"[luks-unlock] RESULT: boot succeeded (g-i-s confirmed via serial, brightness={brightness:.2f})", flush=True)
-        elif result == "gdm":
+        # Primary success path: serial log confirms the login greeter started.
+        # Give it 30s to draw before the screenshot.
+        if result == "greeter":
             print(
-                "[luks-unlock] GDM started — waiting 30s for gnome-initial-setup...",
+                "[luks-unlock] Plasma Login Manager started — waiting 30s for the greeter to draw...",
                 flush=True,
             )
             time.sleep(30)
             brightness, md5 = qemu_screendump(monitor_sock, snap)
             print(
                 f"[luks-unlock] RESULT: boot succeeded"
-                f" (GDM confirmed via serial, brightness={brightness:.2f})",
+                f" (greeter confirmed via serial, brightness={brightness:.2f})",
                 flush=True,
             )
-        if result in ("gnome-initial-setup", "gdm"):
             try:
                 import shutil
                 shutil.copy2(snap, "/tmp/luks-screenshot-final.ppm")
@@ -461,23 +455,25 @@ def run_qemu(monitor_sock: str, passphrase: str, serial_log: str, ssh_port: int 
             sys.exit(0)
 
         # Fallback: no serial console (console=ttyS0 absent).  Use framebuffer
-        # brightness to distinguish GDM (~2.4) from emergency shell (~1.0).
+        # brightness to distinguish a graphical greeter from an emergency shell
+        # (~1.0). These thresholds were measured against GDM (~2.4); the Plasma
+        # greeter is also a full-colour wallpaper, but re-measure if it misfires.
         # Only trigger once the screen has re-stabilised after the initial
-        # post-passphrase animation.  GDM re-renders continuously (cursor
+        # post-passphrase animation.  A greeter re-renders continuously (cursor
         # blink, animations), so we cannot require many consecutive identical
         # frames — 1 stable poll is sufficient to confirm the screen settled.
-        GNOME_THRESHOLD    = 1.8
-        GNOME_STABLE_POLLS = 1   # 1 stable poll is enough; GDM keeps rendering
+        GREETER_THRESHOLD    = 1.8
+        GREETER_STABLE_POLLS = 1   # 1 stable poll is enough; the greeter keeps rendering
         if md5 == prev_hash:
-            gnome_stable_count += 1
+            greeter_stable_count += 1
         else:
-            gnome_stable_count = 0
+            greeter_stable_count = 0
 
-        if screen_changed and gnome_stable_count >= GNOME_STABLE_POLLS:
-            if brightness > GNOME_THRESHOLD:
+        if screen_changed and greeter_stable_count >= GREETER_STABLE_POLLS:
+            if brightness > GREETER_THRESHOLD:
                 print(
                     f"[luks-unlock] RESULT: boot succeeded"
-                    f" (framebuffer stable {gnome_stable_count} polls,"
+                    f" (framebuffer stable {greeter_stable_count} polls,"
                     f" brightness={brightness:.2f})",
                     flush=True,
                 )
@@ -492,7 +488,7 @@ def run_qemu(monitor_sock: str, passphrase: str, serial_log: str, ssh_port: int 
                 shutil.copy2(snap, "/tmp/luks-screenshot-final.ppm")
             except OSError:
                 pass
-            sys.exit(0 if brightness > GNOME_THRESHOLD else 2)
+            sys.exit(0 if brightness > GREETER_THRESHOLD else 2)
 
         prev_hash = md5
         time.sleep(5)

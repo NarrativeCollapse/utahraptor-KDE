@@ -12,7 +12,7 @@
     "welcome": {
       "image": "/run/host/usr/share/bootc-installer/images/utahraptor.png",
       "title": "Welcome to Utah",
-      "description": "Utahraptor is a Bluefin-derived GNOME workstation built on Fedora Hummingbird."
+      "description": "Utahraptor is a Universal Blue KDE Plasma workstation built on Fedora Hummingbird."
     },
     "features": {
       "image": "/run/host/usr/share/bootc-installer/images/utahraptor.png",

@@ -139,11 +139,10 @@ retry_flatpak install --system --noninteractive --no-related --or-update flathub
 
 # Ghostty, from the TunaOS OCI remote.
 #
-# Utah ships no terminal emulator at all otherwise. Bluefin's own image test
-# asserts ptyxis, but ptyxis is not in Bluefin's package contract because
-# Fedora's base image carries it -- and Hummingbird's does not, nor does it
-# package ptyxis, vte291 or gnome-console, so there is nothing to install.
-# Until this factory builds a terminal, the flatpak is the terminal.
+# The desktop's terminal is Konsole, an RPM in [plasma]. Ghostty stays because
+# the end-to-end test (iso/scripts/luks-e2e.sh) drives it: its geometry and
+# software-rendering settings are what the fastfetch OCR gate was tuned
+# against. Moving the harness to Konsole would retire this.
 #
 # Kept out of the Brewfile-derived list on purpose: that list is the parity
 # contract with Bluefin and verify-desktop-contract compares it byte for byte.

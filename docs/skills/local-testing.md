@@ -14,7 +14,7 @@ tags: [qemu, bootc, iso, vm, testing]
 description: >-
   Local validation loop: build-ghcr, bootc install to-disk, QEMU/noVNC boot,
   live ISO boot paths, and Secure Boot strategy. Use when validating changes
-  end-to-end or debugging boot, GDM, or live-session failures.
+  end-to-end or debugging boot, login-greeter, or live-session failures.
 metadata:
   type: runbook
 ---
@@ -64,8 +64,8 @@ install, per its comments:
 graphical console at the printed URL (comment above `boot-vm` in `Justfile`).
 The disk is mounted at `/boot.img` and `-snapshot` keeps the test disposable.
 The recipe prints the noVNC port (8006, auto-incremented if busy) and an SSH
-port (2222, likewise). Success is: GDM appears and the GNOME Shell desktop
-renders in the noVNC web console.
+port (2222, likewise). Success is: the Plasma Login Manager greeter appears
+and the Plasma desktop renders in the noVNC web console.
 
 Override `BASE_DIR`, `VM_RAM`, or `VM_CPUS` when needed -- they are Justfile
 variables read from the environment (defaults `output`, `8192`, `4`).
@@ -115,7 +115,7 @@ forever. Published images omit that argument and keep the service enabled.
 
 ## Live ISO (initial bring-up)
 
-The first ISO slice reuses Utah's own kernel, dracut-live, and GNOME image.
+The first ISO slice reuses Utah's own kernel, dracut-live, and Plasma image.
 `just iso` builds a single-architecture UEFI live ISO; this first slice proves
 the Utah live boot path, and installer payload integration is intentionally
 the next ISO milestone (comment above `iso` in `Justfile`):
@@ -251,11 +251,11 @@ the scope (`/token?scope=repository:projectbluefin/<name>:pull`).
 ### Encrypted install and screenshot harness
 
 `just luks-test` runs `iso/scripts/luks-e2e.sh` against a debug live ISO
-(`just iso testing 1`). It checks the live GNOME session, installs to a
+(`just iso testing 1`). It checks the live Plasma session, installs to a
 disposable LUKS2 disk from the embedded payload, boots without the ISO,
 unlocks the disk, confirms `bootc status` reports the offline embedded
 payload (not a network pull) on a guest with no route out, and checks
-graphical login and extension states. A trailing check, after login,
+graphical login at the greeter. A trailing check, after login,
 confirms every default Flatpak in the Brewfile contract is also present
 offline -- deferred past login because it deploys asynchronously on first
 boot. Both gates have escape hatches for unblocking a promotion when the
@@ -323,7 +323,22 @@ Then the manual runbook, when the change touches the boot path:
 ```bash
 just build-ghcr utah testing main
 just generate-bootable-image testing
-just boot-vm     # success: GDM appears and GNOME Shell renders in noVNC
+just boot-vm     # success: the Plasma greeter appears and Plasma renders in noVNC
 just iso testing
 just boot-iso    # success: live session renders; serial shows UTAH_LIVE_READY
 ```
+
+The session checks are desktop-parameterised. `UTAH_E2E_DM_UNIT` (default
+`plasmalogin.service`) is the display manager that must be active, and
+`UTAH_E2E_SHELL_PROC` (default `plasmashell`) the per-user process that proves
+a graphical session. The greeter login types the password straight into Plasma
+Login Manager's focused password field; `UTAH_E2E_GREETER_PRE_KEY=ret` sends a
+key first if a greeter needs one (GDM did). `iso/scripts/luks-unlock.py` treats
+`Started plasmalogin.service` on the serial console as the boot-complete
+marker. The live ISO's autologin is written to
+`/etc/plasmalogin.conf.d/50-utah-live-autologin.conf` by
+`iso/live/src/configure-live.sh`, matching what tacklebox writes for KDE
+images (`src/live/baseline.sh` in tuna-os/tacklebox), and tacklebox is told
+`"desktop": "kde"`. None of this has run end to end yet: the image cannot build
+until the package factory publishes Plasma (see
+[plasma-migration](plasma-migration.md)).

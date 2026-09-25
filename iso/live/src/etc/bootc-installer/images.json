@@ -5,7 +5,7 @@
     {
       "name": "Utah",
       "imgref": "ghcr.io/projectbluefin/utah:testing",
-      "desc": "Utahraptor — a Bluefin-derived GNOME workstation on Fedora Hummingbird",
+      "desc": "Utahraptor — a Universal Blue KDE Plasma workstation on Fedora Hummingbird",
       "icon": "resource:///org/bootcinstaller/Installer/images/bluefin.png",
       "bootloader": "grub2",
       "filesystem": "btrfs",

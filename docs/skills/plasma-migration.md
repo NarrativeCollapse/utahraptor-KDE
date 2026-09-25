@@ -53,9 +53,13 @@ One logical change per PR:
    became `plasmalogin.service` -- Fedora 44 ships Plasma Login Manager, not
    SDDM. **The image cannot build until the factory publishes Plasma and
    `PACKAGE_IMAGE_SHA` points at it**: no enabled repository carries it.
-5. **Live ISO and e2e**: Plasma Login Manager autologin in
-   `iso/live/src/configure-live.sh`; `iso/scripts/luks-e2e.sh` and
-   `luks-unlock.py` drive GDM screens.
+5. **Live ISO and e2e** (done, unrun): Plasma Login Manager autologin and
+   liveuser's no-lock/no-sleep KDE settings in
+   `iso/live/src/configure-live.sh`; tacklebox gets `"desktop": "kde"`;
+   `luks-e2e.sh` checks `plasmalogin.service` and `plasmashell` (overridable,
+   see [local-testing](local-testing.md)) and no longer checks GNOME
+   extensions; `luks-unlock.py` keys boot completion off the greeter unit.
+   The Ghostty flatpak stays only because the e2e harness drives it.
 6. **Parity target**: move `packages/bluefin.toml` parity to Aurora's
    manifest. This changes an `AGENTS.md` invariant; do it deliberately.
 7. **Rename and rebrand**: os-release, `projectbluefin/utah` image refs, URLs.

@@ -199,7 +199,7 @@ cat >"$RECIPE_FILE" <<EOF
     {
       "id": "${MEDIA_ID}",
       "image": "${BAKE_REF}",
-      "desktop": "gnome",
+      "desktop": "kde",
       "live_customize": ["${CUSTOMIZE_DIR}/customize-live.sh"],
       "modes": ["live"]
     }

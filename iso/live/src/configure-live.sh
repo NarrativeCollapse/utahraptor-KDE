@@ -15,48 +15,50 @@ useradd --create-home --uid 1000 --user-group --comment 'Live User' liveuser || 
 passwd --delete liveuser
 printf 'liveuser ALL=(ALL) NOPASSWD: ALL\n' >/etc/sudoers.d/liveuser
 chmod 0440 /etc/sudoers.d/liveuser
-mkdir -p /home/liveuser/.config
-: >/home/liveuser/.config/gnome-initial-setup-done
-chown -R liveuser:liveuser /home/liveuser/.config
 
-mkdir -p /etc/gdm
-cat >/etc/gdm/custom.conf <<'EOF'
-[daemon]
-AutomaticLoginEnable=True
-AutomaticLogin=liveuser
+# Plasma Login Manager autologin. Fedora's kde-settings-plasmalogin ships the
+# vendor defaults in /usr/lib/plasmalogin/defaults.conf; an administrator's
+# overrides go in /etc/plasmalogin.conf.d, which is read after them.
+# Session=plasma is /usr/share/wayland-sessions/plasma.desktop.
+mkdir -p /etc/plasmalogin.conf.d
+cat >/etc/plasmalogin.conf.d/50-utah-live-autologin.conf <<'EOF'
+[Autologin]
+User=liveuser
+Session=plasma
+Relogin=false
 EOF
 
-# Keep the live session awake, suppress the first-run tour, and pin the
-# installer where a person expects it. The installed system retains its normal
-# Bluefin desktop dconf policy.
-mkdir -p /etc/dconf/db/distro.d /etc/dconf/db/distro.d/locks
-cat >/etc/dconf/db/distro.d/50-utah-live <<'EOF'
-[org/gnome/shell]
-welcome-dialog-last-shown-version='999'
-favorite-apps=['utah-installer.desktop', 'org.mozilla.firefox.desktop', 'org.gnome.Nautilus.desktop', 'io.github.kolunmi.Bazaar.desktop']
-
-[org/gnome/desktop/screensaver]
-lock-enabled=false
-idle-activation-enabled=false
-
-[org/gnome/desktop/session]
-idle-delay=uint32 0
-
-[org/gnome/settings-daemon/plugins/power]
-sleep-inactive-ac-type='nothing'
-sleep-inactive-battery-type='nothing'
-power-button-action='nothing'
+# Keep the live session awake and unlocked, and put the installer where a
+# person expects it. These are liveuser's own KDE settings, which outrank the
+# system defaults in /etc/xdg and kde-settings' profile; the installed system
+# keeps its normal Plasma defaults.
+mkdir -p /home/liveuser/.config /home/liveuser/Desktop
+cat >/home/liveuser/.config/kscreenlockerrc <<'EOF'
+[Daemon]
+Autolock=false
+LockOnResume=false
+Timeout=0
 EOF
-cat >/etc/dconf/db/distro.d/locks/50-utah-live <<'EOF'
-/org/gnome/shell/favorite-apps
-/org/gnome/desktop/screensaver/lock-enabled
-/org/gnome/desktop/screensaver/idle-activation-enabled
-/org/gnome/desktop/session/idle-delay
-/org/gnome/settings-daemon/plugins/power/sleep-inactive-ac-type
-/org/gnome/settings-daemon/plugins/power/sleep-inactive-battery-type
-/org/gnome/settings-daemon/plugins/power/power-button-action
+cat >/home/liveuser/.config/powerdevilrc <<'EOF'
+[AC][Display]
+DimDisplayWhenIdle=false
+TurnOffDisplayWhenIdle=false
+
+[AC][SuspendAndShutdown]
+AutoSuspendAction=0
+PowerButtonAction=0
+
+[Battery][Display]
+DimDisplayWhenIdle=false
+TurnOffDisplayWhenIdle=false
+
+[Battery][SuspendAndShutdown]
+AutoSuspendAction=0
+PowerButtonAction=0
+
+[LowBattery][SuspendAndShutdown]
+AutoSuspendAction=0
 EOF
-dconf update || true
 systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target || true
 
 # Large image blobs must not exhaust the small live overlay. Fisherman uses
@@ -93,7 +95,7 @@ mkdir -p /var/fisherman-tmp
 # tag that the ISO builder imports into the VFS store, never the build host's
 # localhost source ref.
 mkdir -p /usr/share/bootc-installer/images /etc/bootc-installer
-install -Dm0644 /usr/share/ublue-os/bluefin-logos/chicken.png \
+install -Dm0644 /usr/share/pixmaps/system-logo.png \
     /usr/share/bootc-installer/images/utahraptor.png
 cp "${SCRIPT_DIR}/etc/bootc-installer/images.json" /etc/bootc-installer/images.json
 python3 - <<PY
@@ -116,26 +118,29 @@ for path in (Path("/etc/bootc-installer/images.json"), Path("${SCRIPT_DIR}/etc/b
 PY
 touch /etc/bootc-installer/live-iso-mode
 
-# The Flatpak sees the host configuration under /run/host. Provide both an
-# autostart entry and an application entry for manual relaunch from the dock.
+# The Flatpak sees the host configuration under /run/host. Provide an
+# autostart entry, an application entry, and a copy on liveuser's desktop for
+# manual relaunch.
 mkdir -p /etc/xdg/autostart /usr/share/applications
 cat >/etc/xdg/autostart/utah-installer.desktop <<EOF
 [Desktop Entry]
 Name=Utah Installer
 Exec=flatpak run --env=BOOTC_CUSTOM_RECIPE=/run/host/etc/bootc-installer/recipe.json ${INSTALLER_APP_ID}
-Icon=bluefin
+Icon=distributor-logo
 Type=Application
-X-GNOME-Autostart-enabled=true
 EOF
 cat >/usr/share/applications/utah-installer.desktop <<EOF
 [Desktop Entry]
 Name=Utah Installer
 Comment=Install Utahraptor to your computer
 Exec=flatpak run --env=BOOTC_CUSTOM_RECIPE=/run/host/etc/bootc-installer/recipe.json ${INSTALLER_APP_ID}
-Icon=bluefin
+Icon=distributor-logo
 Type=Application
 Categories=System;
 EOF
+install -Dm0755 /usr/share/applications/utah-installer.desktop \
+    /home/liveuser/Desktop/utah-installer.desktop
+chown -R liveuser:liveuser /home/liveuser/.config /home/liveuser/Desktop
 
 # The installer invokes fisherman through pkexec. Its bundle is not visible to
 # host polkit, so expose the binary and authorize only the local live user.
