@@ -70,7 +70,17 @@ One logical change per PR:
    Bluefin's manifest fails). Aurora's KDE-specific additions (kate,
    ksshaskpass, ksystemlog, plasma-firewall, plasma-wallpapers-dynamic) are in
    `[plasma]`.
-7. **Rename and rebrand**: os-release, `projectbluefin/utah` image refs, URLs.
+7. **Rename and rebrand** (done): the OS is Absolution Linux. Its identity
+   -- name, id, codename (still Utahraptor), registry namespace
+   (`narrativecollapse`), URLs -- is `config/identity.json`, read by
+   `scripts/identity.py`, `flavors.py`, the Justfile, `configure-branding.sh`,
+   `configure-live.sh`, the installer JSON (as `{name}` placeholders) and the
+   desktop contract (as `{name}`/`{id}`/... placeholders the verifier fills).
+   The cosign identity in the release workflows follows
+   `${{ github.repository }}`. Internal `utah` names stay. Renaming again is
+   an edit to `config/identity.json`; `tests/test_identity.py` names any
+   literal copy left behind. The look-and-feel, logos and wallpapers are
+   still Aurora's.
 
 Leave `Containerfile.kernel`, `install-ogc-kernel.sh`, `install-nvidia.sh`
 and the `.repo` files alone unless the task is about them: they key the

@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# Build a single-architecture UEFI live ISO from a Utah bootc image.
+# Build a single-architecture UEFI live ISO from a bootc image of this OS.
 # Usage: build-iso.sh IMAGE OUTPUT_ISO [TITLE] [DEBUG] [PUBLISHED_IMAGE]
 set -euo pipefail
 
+IDENTITY_PY="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/scripts/identity.py"
 IMAGE="${1:?image ref is required}"
 OUTPUT_ISO="${2:?output ISO path is required}"
-TITLE="${3:-Utah Live}"
+TITLE="${3:-$(python3 "${IDENTITY_PY}" get name) Live}"
 DEBUG="${4:-0}"
 # SOURCE_IMAGE may be localhost for development, but the embedded store and
 # installer recipe use this stable, publishable reference.
-PUBLISHED_IMAGE="${5:-ghcr.io/projectbluefin/utah:testing}"
+PUBLISHED_IMAGE="${5:-$(python3 "${IDENTITY_PY}" ref main testing)}"
 # Live-ISO size budget (#128). The ISO embeds the full container store for
 # offline install, so image growth shows up twice in the ISO. The successful
 # post-fix E2E run 35469913325 (2026-09-19) measured 3.9G (utah), 4.6G

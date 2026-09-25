@@ -74,6 +74,7 @@ COPY scripts/install-packages.py \
      scripts/verify-desktop-contract.py \
      scripts/mirror-shim.sh \
      scripts/verify-efi-chain.sh \
+     config/identity.json \
      /tmp/utah-scripts/
 # Bluefin's common image publishes the desktop-neutral Universal Blue plumbing
 # (setup services and hooks, ujust, Homebrew and uupd integration) in
@@ -97,6 +98,7 @@ RUN for pair in install-packages.py:utah-install-packages \
                 verify-efi-chain.sh:utah-verify-efi-chain; do \
       install -Dm 0755 "/tmp/utah-scripts/${pair%%:*}" "/usr/local/libexec/${pair##*:}" || exit 1; \
     done && \
+    install -Dm 0644 /tmp/utah-scripts/identity.json /usr/share/utah/identity.json && \
     cp -a /tmp/utah-common/. / && \
     cp -a /tmp/utah-brew/. / && \
     cp -a /tmp/utah-local/. / && \
@@ -132,12 +134,14 @@ RUN --mount=type=bind,from=packages,source=/repository,target=/etc/utah-packages
 
 # Per-image arguments. Nothing above this line may read them; see the note on
 # layer discipline at the top.
-ARG IMAGE_NAME=utah
+# The defaults match config/identity.json (tests/test_identity.py holds them to
+# it); the Justfile passes the real values for every build.
+ARG IMAGE_NAME=absolution
 # Canonical OS identity, distinct from the repository name a flavor publishes
-# under. Always utah; never flavored.
-ARG IMAGE_ID=utah
+# under. Always the plain id; never flavored.
+ARG IMAGE_ID=absolution
 ARG IMAGE_FLAVOR=main
-ARG IMAGE_VENDOR=projectbluefin
+ARG IMAGE_VENDOR=narrativecollapse
 ARG VERSION=testing
 ARG SHA_HEAD_SHORT=unknown
 # Production images keep SSH closed; local VM diagnostics can opt in with
@@ -229,9 +233,9 @@ RUN --mount=type=bind,from=packages,source=/repository,target=/etc/utah-packages
 RUN /usr/local/libexec/utah-clean-stage && \
     bootc container lint --fatal-warnings --skip nonempty-boot
 
-LABEL org.opencontainers.image.title="Utah"
+LABEL org.opencontainers.image.title="Absolution Linux"
 LABEL org.opencontainers.image.description="A Hummingbird-based Universal Blue KDE Plasma workstation"
-LABEL org.opencontainers.image.source="https://github.com/projectbluefin/utah"
+LABEL org.opencontainers.image.source="https://github.com/NarrativeCollapse/utahraptor-KDE"
 LABEL org.opencontainers.image.vendor="${IMAGE_VENDOR}"
 LABEL org.opencontainers.image.version="${VERSION}"
 LABEL containers.bootc=1

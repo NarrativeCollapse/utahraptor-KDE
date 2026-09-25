@@ -24,6 +24,7 @@ SCRIPT = ROOT / "scripts" / "flavors.py"
 REAL_CONFIG = ROOT / "config" / "flavors.json"
 
 ALL_FLAVORS = ["main", "nvidia", "gaming", "nvidia-gaming"]
+OS_ID = json.loads((ROOT / "config" / "identity.json").read_text())["id"]
 
 
 def run(script, *args):
@@ -44,6 +45,7 @@ def build_tree(config):
     (root / "scripts").mkdir()
     (root / "config").mkdir()
     shutil.copy(SCRIPT, root / "scripts" / "flavors.py")
+    shutil.copy(ROOT / "config" / "identity.json", root / "config" / "identity.json")
     payload = config if isinstance(config, str) else json.dumps(config)
     (root / "config" / "flavors.json").write_text(payload)
     return root / "scripts" / "flavors.py"
@@ -66,19 +68,19 @@ class QueryTests(unittest.TestCase):
         cli = build_tree({"flavors": ALL_FLAVORS, "retired": {}})
         result = run(cli, "images")
         self.assertEqual(json.loads(result.stdout), [
-            {"image": "utah"},
-            {"image": "utah-nvidia"},
-            {"image": "utah-gaming"},
-            {"image": "utah-nvidia-gaming"},
+            {"image": OS_ID},
+            {"image": f"{OS_ID}-nvidia"},
+            {"image": f"{OS_ID}-gaming"},
+            {"image": f"{OS_ID}-nvidia-gaming"},
         ])
 
     def test_image_maps_every_flavor_to_its_image_name(self):
         cli = build_tree({"flavors": ALL_FLAVORS, "retired": {}})
         for flavor, expected in (
-            ("main", "utah"),
-            ("nvidia", "utah-nvidia"),
-            ("gaming", "utah-gaming"),
-            ("nvidia-gaming", "utah-nvidia-gaming"),
+            ("main", OS_ID),
+            ("nvidia", f"{OS_ID}-nvidia"),
+            ("gaming", f"{OS_ID}-gaming"),
+            ("nvidia-gaming", f"{OS_ID}-nvidia-gaming"),
         ):
             result = run(cli, "image", flavor)
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -100,8 +102,8 @@ class QueryTests(unittest.TestCase):
         cli = build_tree({"flavors": ["main", "gaming"], "retired": {}})
         result = run(cli, "releases")
         self.assertEqual(json.loads(result.stdout), [
-            {"image": "utah", "source_tag": "testing", "target_tag": "stable"},
-            {"image": "utah-gaming", "source_tag": "testing", "target_tag": "stable"},
+            {"image": OS_ID, "source_tag": "testing", "target_tag": "stable"},
+            {"image": f"{OS_ID}-gaming", "source_tag": "testing", "target_tag": "stable"},
         ])
 
     def test_needs_kernel_is_false_for_main_only(self):

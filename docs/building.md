@@ -7,15 +7,15 @@ the skills linked at the bottom; the README is the user-facing page.
 
 ```bash
 just check
-just build-ghcr utah testing main
+just build-ghcr absolution testing main
 just generate-bootable-image testing
 just boot-vm
 
 # Optional local diagnostics over SSH (never use for a published image):
-ENABLE_SSHD=1 just build-ghcr utah testing main
+ENABLE_SSHD=1 just build-ghcr absolution testing main
 ```
 
-The image is tagged `localhost/utah:testing`. `generate-bootable-image` uses
+The image is tagged `localhost/absolution:testing` (the OS id from `config/identity.json`). `generate-bootable-image` uses
 `bootc install to-disk` to create `output/bootable.raw`; `boot-vm` runs that disk
 with `ghcr.io/qemus/qemu` and serves the graphical console at the printed URL.
 Confirm that Plasma Login Manager starts and the Plasma desktop renders in the web console.

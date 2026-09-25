@@ -136,7 +136,7 @@ class PageTests(unittest.TestCase):
 
     def test_status_sources_are_declared_in_one_place(self):
         block = self.js.split("const WORKFLOWS = [", 1)[1].split("];", 1)[0]
-        for repo in ("projectbluefin/utah", "projectbluefin/utah-packages"):
+        for repo in ("NarrativeCollapse/utahraptor-KDE", "projectbluefin/utah-packages"):
             self.assertIn(repo, block)
         # Nothing outside that list may name a workflow file.
         rest = self.js.replace(block, "")

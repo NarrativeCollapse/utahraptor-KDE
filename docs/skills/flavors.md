@@ -80,8 +80,9 @@ group on that name; Utah's Justfile ignores it when naming images.
   building the cache is 45 minutes spent on nothing.
 - `images` / `releases` -- the same set shaped for the promote and release
   matrices (docstring, `scripts/flavors.py`).
-- `image FLAVOR` -- the published image name for a flavor (e.g. `utah` or
-  `utah-nvidia`), called directly by the recipes that build, tag, or publish
+- `image FLAVOR` -- the published image name for a flavor: the OS id from
+  `config/identity.json`, suffixed unless main (e.g. `absolution` or
+  `absolution-nvidia`), called directly by the recipes that build, tag, or publish
   images, and exposed to outside callers as `just image_name`.
 
 Unknown names in `flavors` are a hard error at read time, so a typo in the

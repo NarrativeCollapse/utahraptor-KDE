@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
-# Configure the Utah live ISO after Flatpaks are baked in. This is the
+# Configure the live ISO after Flatpaks are baked in. This is the
 # non-composefs/bootcDirect branch of Dakota's installer integration.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALLER_APP_ID=org.bootcinstaller.Installer
-TARGET_IMAGE="${TARGET_IMAGE:-ghcr.io/projectbluefin/utah:testing}"
+# The OS identity the image carries (config/identity.json, installed by the
+# Containerfile). Every user-visible name below comes from it.
+IDENTITY_FILE=/usr/share/utah/identity.json
+identity() {
+    python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))[sys.argv[2]])' \
+        "${IDENTITY_FILE}" "$1"
+}
+OS_NAME="$(identity name)"
+TARGET_IMAGE="${TARGET_IMAGE:-ghcr.io/$(identity vendor)/$(identity id):testing}"
 
 # Live media must not apply update or unified-storage policy intended for an
 # installed image. The payload embedded in the squashfs is the install source.
@@ -102,8 +110,20 @@ python3 - <<PY
 import json
 from pathlib import Path
 ref = "${TARGET_IMAGE}"
+identity = json.loads(Path("${IDENTITY_FILE}").read_text())
+
+def fill(node):
+    # The installer JSON names the OS as {name}, {codename}, ... placeholders.
+    if isinstance(node, str):
+        return node.format_map(identity)
+    if isinstance(node, list):
+        return [fill(item) for item in node]
+    if isinstance(node, dict):
+        return {key: fill(value) for key, value in node.items()}
+    return node
+
 for path in (Path("/etc/bootc-installer/images.json"), Path("${SCRIPT_DIR}/etc/bootc-installer/recipe.json")):
-    data = json.loads(path.read_text())
+    data = fill(json.loads(path.read_text()))
     if path.name == "images.json":
         data["default_image"] = ref
         data["images"][0]["imgref"] = ref
@@ -124,15 +144,15 @@ touch /etc/bootc-installer/live-iso-mode
 mkdir -p /etc/xdg/autostart /usr/share/applications
 cat >/etc/xdg/autostart/utah-installer.desktop <<EOF
 [Desktop Entry]
-Name=Utah Installer
+Name=${OS_NAME} Installer
 Exec=flatpak run --env=BOOTC_CUSTOM_RECIPE=/run/host/etc/bootc-installer/recipe.json ${INSTALLER_APP_ID}
 Icon=distributor-logo
 Type=Application
 EOF
 cat >/usr/share/applications/utah-installer.desktop <<EOF
 [Desktop Entry]
-Name=Utah Installer
-Comment=Install Utahraptor to your computer
+Name=${OS_NAME} Installer
+Comment=Install ${OS_NAME} to your computer
 Exec=flatpak run --env=BOOTC_CUSTOM_RECIPE=/run/host/etc/bootc-installer/recipe.json ${INSTALLER_APP_ID}
 Icon=distributor-logo
 Type=Application
@@ -152,13 +172,13 @@ fi
 mkdir -p /var/usrlocal/bin
 ln -sfn "${installer_dir}/fisherman" /var/usrlocal/bin/fisherman
 mkdir -p /usr/share/polkit-1/actions /etc/polkit-1/rules.d
-cat >/usr/share/polkit-1/actions/org.bootcinstaller.Installer.policy <<'EOF'
+cat >/usr/share/polkit-1/actions/org.bootcinstaller.Installer.policy <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN" "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
 <policyconfig>
   <action id="org.tunaos.Installer.install">
-    <description>Install Utah to disk</description>
-    <message>Authentication is required to install Utah</message>
+    <description>Install ${OS_NAME} to disk</description>
+    <message>Authentication is required to install ${OS_NAME}</message>
     <defaults><allow_any>no</allow_any><allow_inactive>no</allow_inactive><allow_active>yes</allow_active></defaults>
     <annotate key="org.freedesktop.policykit.exec.path">/usr/local/bin/fisherman</annotate>
     <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>

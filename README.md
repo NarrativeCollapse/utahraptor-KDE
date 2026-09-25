@@ -1,46 +1,69 @@
-# Utahraptor
+# Absolution Linux
 
 <!-- BEGIN E2E VERIFICATION -->
-[![Verified ISO desktop](docs/verification/screenshots/installed-fastfetch.png)](docs/verification/README.md)
-
-*LUKS ISO test passed for commit `d985064d3257`. [CI run](https://github.com/projectbluefin/utah/actions/runs/36143930533); [screenshots and provenance](docs/verification/README.md).*
+*No end-to-end run of Absolution Linux yet: the image cannot build until the
+package factory publishes KDE Plasma (see [Status](#status)). The record in
+[docs/verification](docs/verification/README.md) is the last upstream Utah
+(GNOME) run this fork inherited, kept for its method, not as a claim about
+this image.*
 <!-- END E2E VERIFICATION -->
 
-†Utahraptor ostrommaysi
+A Universal Blue KDE Plasma workstation on [Fedora
+Hummingbird](https://packages.redhat.com). Absolution Linux is a fork of
+[Utah](https://github.com/projectbluefin/utah) — Project Bluefin's
+Hummingbird-based image, codenamed Utahraptor — with the GNOME desktop
+replaced by KDE Plasma 6 and [Aurora](https://getaurora.dev)'s Plasma
+defaults.
 
-Bluefin built on Fedora Hummingbird. The more ... civilized murder machine.
-
-> Your day keeps getting worse. Why are there more.
-
-![alt](https://github.com/user-attachments/assets/56428338-54a0-4376-a53b-5f02f8b101a1)
-
-**Experimental pre-alpha** — the image builds, boots, and installs end to
-end in local QEMU validation: the live ISO's bootc-installer creates a
-LUKS2-encrypted disk from the ISO's embedded container store with no
-network, and the installed system boots on its own to GDM and a GNOME
-session (verified record: [docs/verification](docs/verification/README.md)).
-None of that is published — no image has been pushed to a registry and no
-ISO has been released — but the installer and offline payload it exercises
-are implemented, not a future milestone. Nothing here is ready to run on a
-machine you care about. [Filing
-issues](https://github.com/projectbluefin/utah/issues) is the whole point.
+**Experimental pre-alpha, and not buildable yet.** Nothing is published: no
+image in a registry, no ISO. Nothing here is ready to run on a machine you
+care about. [Filing
+issues](https://github.com/NarrativeCollapse/utahraptor-KDE/issues) is the
+whole point.
 
 ## What it is
 
-[Bluefin](https://projectbluefin.io) built on [Fedora
-Hummingbird](https://packages.redhat.com), which supplies a hardened, fast-moving
-bootable base and no desktop at all. Utah adds the desktop: Bluefin's package
-contract on top, and the GNOME 51 stack built from source because neither
-Hummingbird nor a Fedora release ships it.
+Hummingbird supplies a hardened, fast-moving bootable base and no desktop at
+all. Absolution Linux adds one:
 
-<img src="https://github.com/user-attachments/assets/962af585-6e2a-4038-ac14-8e54a3189420" alt="alt" width="40%">
+- **KDE Plasma 6** — the session, KWin, Plasma Login Manager, Dolphin,
+  Konsole and system integration (`[plasma]` in `packages/utah.toml`), built
+  from source by a package factory because Hummingbird ships none of it.
+- **Aurora's Plasma profile** — look-and-feel, KDE defaults, greeter
+  configuration, wallpapers and the default Flatpak set, from
+  `ghcr.io/get-aurora-dev/common`.
+- **Bluefin's plumbing and package contract** — setup services, `ujust`,
+  Homebrew and update integration from `ghcr.io/projectbluefin/common`, and
+  Bluefin's package list, minus the packages that only serve GNOME.
 
-Two repositories, the way `common` and `brew` already work:
+Two repositories, the way Utah is built:
 
 | Repository | What it does |
 |---|---|
-| [`projectbluefin/utah`](https://github.com/projectbluefin/utah) | This one. Composes the image. |
-| [`projectbluefin/utah-packages`](https://github.com/projectbluefin/utah-packages) | Builds GNOME 51 and the rest of the desktop stack from verified upstream sources, and publishes them as an OCI image. |
+| [`NarrativeCollapse/utahraptor-KDE`](https://github.com/NarrativeCollapse/utahraptor-KDE) | This one. Composes the image. |
+| a fork of [`projectbluefin/utah-packages`](https://github.com/projectbluefin/utah-packages) | Will build Qt 6, KDE Frameworks 6 and Plasma 6 against Hummingbird and publish them as a digest-pinned OCI package repository. Not set up yet. |
+
+The OS name, id, registry namespace and URLs live in one file,
+[`config/identity.json`](config/identity.json); renaming the OS is an edit
+there (`tests/test_identity.py` names anything that disagrees). Internal names
+— the `utah-*` helpers, `/usr/share/utah`, `packages/utah.toml` — are this
+image's Utah lineage and stay.
+
+## Status
+
+The GNOME-to-Plasma migration is done in this repository and recorded, step
+by step, in [docs/skills/plasma-migration.md](docs/skills/plasma-migration.md).
+What is missing is the packages:
+
+1. **The package factory.** Fork `projectbluefin/utah-packages`, import the
+   Qt 6 / KDE Frameworks 6 / Plasma 6 recipes, and let its GitHub Actions
+   build them. `just plasma-closure` measures exactly which source packages
+   that is.
+2. **The pin.** Point `PACKAGE_IMAGE` / `PACKAGE_IMAGE_SHA` in the
+   `Containerfile` at the published factory image. Until then the package
+   transaction fails: no enabled repository carries Plasma.
+3. **The first real build and end-to-end run.** The live ISO, installer and
+   LUKS test have been adapted for Plasma but have never run against it.
 
 ## Image streams
 
@@ -49,25 +72,25 @@ Two repositories, the way `common` and `brew` already work:
 | `:testing` | Dev | Built from `testing`, advanced only after end-to-end validation. |
 | `:stable` | Stable | Promoted from `:testing`. |
 
-Four flavors per stream — `utah`, `utah-nvidia`, `utah-gaming`,
-`utah-nvidia-gaming` — matching Bluefin's. `config/flavors.json` is the single
-source for that set, for the promote and release matrices, and for whether the
-kernel cache image gets built at all.
+Four flavors per stream — `absolution`, `absolution-nvidia`,
+`absolution-gaming`, `absolution-nvidia-gaming`, under
+`ghcr.io/narrativecollapse` — derived from the OS id in
+`config/identity.json` and the flavor set in `config/flavors.json`.
 
-**None of these are published yet.** The tags above describe what the pipeline
-is built to produce, not something you can pull today.
+**None of these are published yet.**
 
 ## Package parity with Bluefin
 
 `packages/bluefin.toml` is a byte-for-byte copy of Bluefin's `base.toml` at the
 upstream revision pinned in `packages/.bluefin-parity-ref`, and CI diffs it
-against that exact revision on every run, so local drift fails the build rather
-than being noticed later.
+against that exact revision on every run. Bluefin packages that only serve a
+GNOME session are left out on purpose, each with its reason, in
+`[not_on_plasma]` in `packages/utah.toml`.
 
 | | count |
 | --- | --- |
 | Bluefin contract installed | **51** |
-| Utah additions (KDE Plasma 6, base-image parity, device firmware, desktop services) | 93 |
+| Overlay additions (KDE Plasma 6, base-image parity, device firmware, desktop services) | 93 |
 | Genuinely unavailable | **8** |
 
 The install writes its resolved list to `/usr/share/utah/contract.txt` and the
@@ -76,64 +99,50 @@ generated from `packages/bluefin.toml` and `packages/utah.toml`
 (`scripts/generate-site-data.py`, `site/data/packages.json`); `just check`
 fails if this table drifts from that output (`scripts/check-doc-counts.py`).
 
-
-
 ## Known gaps
 
 This is the honest list, and it is why the label above says pre-alpha.
 
+- **It does not build.** See [Status](#status): Plasma needs the package
+  factory first.
+- **The Plasma package names are Fedora 44's, unverified here.** Run `just
+  plasma-closure` somewhere with network access to Hummingbird and Fedora; a
+  name Fedora does not carry is reported, not silently dropped.
 - **Nothing is published.** No image has been pushed to a registry and no ISO
-  artifact has been released. The live ISO and its bootc-installer payload
-  are implemented and pass an offline, LUKS2-encrypted install end to end in
-  local QEMU validation (`just iso`, `just luks-test`; record and screenshots
-  in [docs/verification](docs/verification/README.md)) — what is missing is
-  publication, not the installer.
+  artifact has been released.
+- **Branding is Aurora's.** The look-and-feel package, logos and wallpapers
+  are Aurora's (`dev.getaurora.aurora.desktop`); os-release says Absolution
+  Linux. Absolution's own artwork does not exist yet.
 - **Live media boot paths and Secure Boot.** Live media requires UEFI boot;
-  legacy BIOS and file-backed/Ventoy booting are explicitly unsupported (flash
-  directly using Fedora Media Writer or `dd`). As a documented exception
-  (Issue #22), live media runs SELinux in Permissive mode (`enforcing=0`)
-  because rootless container squashfs generation cannot preserve SELinux xattrs;
-  installed target systems boot Enforcing normally. Because the live environment
-  currently uses `systemd-boot-unsigned`, Secure Boot must be disabled in firmware
-  to boot the live media until signed shim integration is complete. Custom OGC
-  kernels and NVIDIA modules similarly require MOK enrollment or Secure Boot
-  disabled.
-- **Cross-vendor switch and update timers (`bootc-fetch-apply-updates`).**
-  Switching to Utah from Bluefin or other bootc images carries Bluefin's
-  `/etc/systemd/system/timers.target.wants/bootc-fetch-apply-updates.timer`
-  symlink across ostree's 3-way `/etc` merge. Utah masks
-  `bootc-fetch-apply-updates.timer` and `bootc-fetch-apply-updates.service` in
-  both `/etc` and `/usr/lib/systemd/system/` (and presets them to disabled) so
-  background auto-updates do not bypass `uupd` policy or silently undo a
-  rollback (`bootc rollback`). Switchers should verify with
-  `systemctl is-enabled bootc-fetch-apply-updates.timer` and can re-assert the
-  mask (`systemctl mask --now bootc-fetch-apply-updates.timer bootc-fetch-apply-updates.service`)
-  if a merged `/etc` wants symlink remains on disk (links #17, #101).
-- **Wi-Fi needs a package the factory has not built yet.** The image ships no
-  device firmware of its own — the bootable base carries none, and Bluefin only
-  appears to because Fedora's Silverblue base supplies `linux-firmware`. `[hardware]`
-  in `packages/utah.toml` now installs it, so a wireless driver can load its
-  blob. That is necessary but not sufficient: Hummingbird's `NetworkManager-wifi`
-  requires `wireless-regdb` and a supplicant, none of which exists in any
-  enabled repository, so NetworkManager still does not manage the interface
-  (`utah-packages#136`; the pin that would carry them is `#126`).
-- **The NVIDIA and gaming flavors are unproven.** The OGC kernel compiles with
-  `sched_ext` and `binderfs` genuinely enabled, and the NVIDIA open module
-  compiles for the base kernel. The module against the OGC kernel, the driver
-  installer flags, and the flavored builds pulling the kernel cache image have
-  not yet all passed in one run.
-- **Codec support differs.** Twelve `[multimedia_overrides]` names are packages
-  Fedora already ships and Bluefin *replaces* with negativo17 builds. Utah
-  installs Fedora's. Nothing is absent from the image; hardware-accelerated
-  codecs are what differ. `utah-packages` already builds several of them, so
-  this closes when Utah consumes that overlay.
-- **The image is still pre-alpha.** The digest-pinned `utah-packages` OCI
-  repository is consumed and the local QEMU image reaches GDM and GNOME Shell.
+  legacy BIOS and file-backed/Ventoy booting are unsupported (flash directly
+  using Fedora Media Writer or `dd`). Live media runs SELinux in Permissive
+  mode (`enforcing=0`) because rootless container squashfs generation cannot
+  preserve SELinux xattrs; installed systems boot Enforcing. The live
+  environment uses `systemd-boot-unsigned`, so Secure Boot must be disabled
+  to boot it. Custom OGC kernels and NVIDIA modules likewise require MOK
+  enrollment or Secure Boot disabled.
+- **Update timers after switching from another bootc image.** Switching from
+  Bluefin, Aurora or another bootc image carries its
+  `timers.target.wants/bootc-fetch-apply-updates.timer` symlink across
+  ostree's 3-way `/etc` merge. Background auto-updates are `uupd`'s job, so
+  `bootc-fetch-apply-updates.timer` and `bootc-fetch-apply-updates.service`
+  are masked in `/etc` and `/usr/lib` (and preset to disabled), so they cannot
+  bypass `uupd` policy or silently undo a rollback (`bootc rollback`). Verify
+  with `systemctl is-enabled bootc-fetch-apply-updates.timer`, and re-assert
+  the mask if a merged `/etc` symlink remains
+  (`systemctl mask --now bootc-fetch-apply-updates.timer bootc-fetch-apply-updates.service`).
+- **Wi-Fi needs a package the factory has not built yet.** `linux-firmware`
+  is installed, but Hummingbird's `NetworkManager-wifi` requires
+  `wireless-regdb` and a supplicant that no enabled repository carries
+  (inherited from Utah: utah-packages#136, #126).
+- **The NVIDIA and gaming flavors are unproven**, as upstream: the OGC kernel
+  and NVIDIA module compile, but the flavored builds have not all passed in
+  one run.
+- **Codec support differs.** Bluefin replaces twelve Fedora multimedia
+  packages with negativo17 builds; this image installs Fedora's, so
+  hardware-accelerated codecs differ.
 - **CUDA is deliberately excluded** — 7.68 GB installed. Use the NVIDIA
   container toolkit, which is included, and run CUDA in a container.
-
-See the [open issues](https://github.com/projectbluefin/utah/issues) for where
-things stand.
 
 ## Contributing or building from source
 

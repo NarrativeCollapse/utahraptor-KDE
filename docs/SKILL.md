@@ -1,7 +1,8 @@
-# Utah Skill Router
+# Absolution Linux Skill Router
 
-Agent entry point for `projectbluefin/utah`. Find the source that matches your
-task, load only that, then act. Utah's deep documentation lives in
+Agent entry point for `NarrativeCollapse/utahraptor-KDE` (Absolution Linux, a
+KDE Plasma fork of `projectbluefin/utah`). Find the source that matches your
+task, load only that, then act. The deep documentation lives in
 [`skills/`](skills/) — the skills in the task index below. The Containerfile's
 comment blocks and the manifests' headers stay canonical for mechanism detail
 next to the code, and the skills cite them.
@@ -24,7 +25,7 @@ next to the code, and the skills cite them.
 | Work on the OGC kernel or NVIDIA module cache | [`skills/kernel-cache.md`](skills/kernel-cache.md) |
 | Edit the `Containerfile`, add a script, or investigate build time | [`skills/containerfile.md`](skills/containerfile.md) |
 | Validate changes end-to-end in a VM or live ISO | [`skills/local-testing.md`](skills/local-testing.md) |
-| Change branding, desktop defaults, or first-boot Flatpak policy | [`skills/desktop-contract.md`](skills/desktop-contract.md) |
+| Rename the OS, or change branding, desktop defaults, or first-boot Flatpak policy | [`skills/desktop-contract.md`](skills/desktop-contract.md) |
 | Change `.github/workflows/` or debug a red run | [`skills/ci-workflows.md`](skills/ci-workflows.md) |
 | Work on the GNOME-to-Plasma migration, or size the Plasma package factory | [`skills/plasma-migration.md`](skills/plasma-migration.md) |
 | Decide whether to write or update a skill | [`skills/skill-improvement.md`](skills/skill-improvement.md) |

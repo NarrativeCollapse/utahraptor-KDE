@@ -33,7 +33,7 @@ def load_generator():
 
 
 def expected_counts() -> tuple[int, int, int]:
-    """(Bluefin contract installed, Utah additions, genuinely unavailable)."""
+    """(Bluefin contract installed, overlay additions, genuinely unavailable)."""
     data = load_generator().build(ROOT)
     bluefin = next(g for g in data["groups"] if g["id"] == "bluefin")
     bluefin_count = len(bluefin["packages"])
@@ -56,20 +56,20 @@ def main() -> int:
 
     readme = README.read_text()
     readme_bluefin = find(r"Bluefin contract installed \| \*\*(\d+)\*\*", readme, README)
-    readme_additions = find(r"Utah additions \([^)]*\) \| (\d+)", readme, README)
+    readme_additions = find(r"(?:Utah|Overlay) additions \([^)]*\) \| (\d+)", readme, README)
     readme_unavailable = find(r"Genuinely unavailable \| \*\*(\d+)\*\*", readme, README)
 
     skill = re.sub(r"\s+", " ", PACKAGE_CONTRACT_SKILL.read_text())
     skill_bluefin = find(r"(\d+) Bluefin contract packages installed", skill,
                           PACKAGE_CONTRACT_SKILL)
-    skill_additions = find(r"(\d+) Utah additions \([^)]*\)", skill, PACKAGE_CONTRACT_SKILL)
+    skill_additions = find(r"(\d+) (?:Utah|overlay) additions \([^)]*\)", skill, PACKAGE_CONTRACT_SKILL)
     skill_unavailable = find(r"(\d+) genuinely unavailable", skill, PACKAGE_CONTRACT_SKILL)
     found = {
         "README.md Bluefin contract installed": (readme_bluefin, bluefin),
-        "README.md Utah additions": (readme_additions, additions),
+        "README.md overlay additions": (readme_additions, additions),
         "README.md Genuinely unavailable": (readme_unavailable, unavailable),
         "package-contract.md Bluefin contract installed": (skill_bluefin, bluefin),
-        "package-contract.md Utah additions": (skill_additions, additions),
+        "package-contract.md overlay additions": (skill_additions, additions),
         "package-contract.md genuinely unavailable": (skill_unavailable, unavailable),
     }
 
@@ -83,7 +83,7 @@ def main() -> int:
         return 1
 
     print(f"documented package counts are current: {bluefin} Bluefin contract, "
-          f"{additions} Utah additions, {unavailable} genuinely unavailable")
+          f"{additions} overlay additions, {unavailable} genuinely unavailable")
     return 0
 
 

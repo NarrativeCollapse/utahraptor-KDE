@@ -96,6 +96,35 @@ def unit_masked(unit: str, root: Path = Path("/")) -> bool:
     return False
 
 
+# The keys config/identity.json carries (scripts/identity.py REQUIRED). A
+# contract's branding values may name them as {name}, {id}, ... so the OS
+# identity lives in one file rather than in every contract that asserts it.
+IDENTITY_KEYS = ("name", "id", "codename", "vendor", "repository", "home_url",
+                 "documentation_url", "support_url", "bug_report_url")
+IDENTITY_TABLES = (("os_release", False), ("os_release_patterns", True),
+                   ("image_info", False), ("image_info_patterns", True))
+
+
+def expand_identity(branding: dict[str, Any], identity: dict[str, str]) -> list[str]:
+    """Fill {placeholders} in the branding tables from the identity, in place.
+
+    Pattern tables get regex-escaped values, so a name with a dot or a plus
+    cannot widen the pattern it is substituted into. A literal brace in a
+    pattern is written doubled ({{ and }}), as in str.format.
+    """
+    errors: list[str] = []
+    for table, is_pattern in IDENTITY_TABLES:
+        values = branding.get(table, {})
+        subs = {key: re.escape(str(value)) if is_pattern else str(value)
+                for key, value in identity.items()}
+        for key, value in values.items():
+            try:
+                values[key] = str(value).format_map(subs)
+            except (KeyError, ValueError, IndexError) as exc:
+                errors.append(f"branding {table} {key}: bad identity placeholder {exc}")
+    return errors
+
+
 def validate_contract(contract: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     for section in ("branding", "configuration", "flatpak", "services"):
@@ -113,6 +142,14 @@ def validate_contract(contract: dict[str, Any]) -> list[str]:
         errors.append("Flatpak app contract contains duplicate IDs")
     if not str(flatpak.get("brewfile", "")).startswith("/"):
         errors.append("Flatpak Brewfile path must be absolute")
+    branding = contract.get("branding", {})
+    if "identity" in branding:
+        if not str(branding["identity"]).startswith("/"):
+            errors.append("branding identity path must be absolute")
+        # Placeholders must name identity keys; check them against stand-ins,
+        # on a copy, since the real identity is only in the image.
+        copy = {table: dict(branding.get(table, {})) for table, _ in IDENTITY_TABLES}
+        errors.extend(expand_identity(copy, {key: key for key in IDENTITY_KEYS}))
     return errors
 
 
@@ -135,6 +172,15 @@ def main() -> int:
     configuration = contract["configuration"]
     flatpak = contract["flatpak"]
     services = contract["services"]
+
+    if "identity" in branding:
+        identity_path = Path(branding["identity"])
+        try:
+            identity = json.loads(identity_path.read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            fail(f"cannot read the OS identity {identity_path}: {exc}")
+            return 1
+        errors.extend(expand_identity(branding, identity))
 
     for section in (branding, configuration, flatpak):
         for file_name in section.get("files", []):
@@ -211,7 +257,7 @@ def main() -> int:
     masked_count = len(services.get("masked", []))
     masked_msg = f", {masked_count} masked services" if masked_count else ""
     print(
-        f"Utah desktop contract passed: {len(flatpak['apps'])} Flatpaks, "
+        f"Desktop contract passed: {len(flatpak['apps'])} Flatpaks, "
         f"{len(services.get('enabled', []))} enabled services, "
         f"{len(services.get('user_enabled', []))} user services{masked_msg}"
     )

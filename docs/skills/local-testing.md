@@ -39,7 +39,8 @@ just boot-vm
 
 `just check` is the gate CI runs first (AGENTS.md, build section).
 
-`just build-ghcr utah testing main` tags the image `localhost/utah:testing`.
+`just build-ghcr absolution testing main` tags the image `localhost/absolution:testing`
+(the OS id from `config/identity.json`).
 `just generate-bootable-image testing` then uses `bootc install to-disk` to
 create `output/bootable.raw`; this follows Bluefin's bootc-to-disk path rather
 than trying to boot an OCI layer directly (comment above
@@ -215,7 +216,7 @@ the published image ref embedded as an offline payload, so the live desktop
 matches the standard ISO:
 
 ```bash
-just iso-tacklebox main                              # from localhost/utah:testing
+just iso-tacklebox main                              # from localhost/absolution:testing
 just iso-tacklebox main testing ghcr testing-20260922-256d837
 ```
 

@@ -180,7 +180,7 @@ default branch, preventing unrelated upstream changes from breaking Utah's CI.
 Update it whenever synchronizing `packages/bluefin.toml` with upstream.
 
 Current counts, per the README "Package parity" section: 51 Bluefin contract
-packages installed, 93 Utah additions (KDE Plasma 6, base-image parity, device
+packages installed, 93 overlay additions (KDE Plasma 6, base-image parity, device
 firmware, desktop services), 8 genuinely unavailable. `scripts/check-doc-counts.py` (part of
 `just check`) recomputes these from the manifests and fails if either
 document drifts from `site/data/packages.json`.

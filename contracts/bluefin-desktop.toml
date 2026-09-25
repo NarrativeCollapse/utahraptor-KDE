@@ -4,7 +4,12 @@
 # image supplies, and first-boot Flatpak policy.
 
 [branding]
+# The OS identity: {name}, {id}, {vendor}, ... below are filled from this file,
+# which the image installs from config/identity.json. Renaming the OS never
+# touches this contract.
+identity = "/usr/share/utah/identity.json"
 files = [
+  "/usr/share/utah/identity.json",
   "/usr/share/plasma/look-and-feel/dev.getaurora.aurora.desktop/metadata.json",
   "/usr/share/plasma/look-and-feel/dev.getaurora.aurora.desktop/contents/layouts/org.kde.plasma.desktop-layout.js",
   "/usr/share/icons/hicolor/scalable/distributor-logo.svg",
@@ -14,34 +19,34 @@ files = [
 ]
 
 [branding.os_release]
-NAME = "Utah"
-ID = "utah"
+NAME = "{name}"
+ID = "{id}"
 ID_LIKE = "fedora"
-CPE_NAME = "cpe:/o:universal-blue:utah"
-HOME_URL = "https://projectbluefin.io"
-DOCUMENTATION_URL = "https://docs.projectbluefin.io"
-SUPPORT_URL = "https://github.com/projectbluefin/utah/issues/"
-BUG_REPORT_URL = "https://github.com/projectbluefin/utah/issues/"
-DEFAULT_HOSTNAME = "utah"
-VERSION_CODENAME = "Utahraptor"
-IMAGE_ID = "utah"
+CPE_NAME = "cpe:/o:{vendor}:{id}"
+HOME_URL = "{home_url}"
+DOCUMENTATION_URL = "{documentation_url}"
+SUPPORT_URL = "{support_url}"
+BUG_REPORT_URL = "{bug_report_url}"
+DEFAULT_HOSTNAME = "{id}"
+VERSION_CODENAME = "{codename}"
+IMAGE_ID = "{id}"
 
 [branding.os_release_patterns]
-PRETTY_NAME = '^Utah \(Version: .+\)$'
+PRETTY_NAME = '^{name} \(Version: .+\)$'
 VERSION = '^.+ \(Hummingbird\)$'
-VARIANT_ID = '^utah(-.*)?$'
+VARIANT_ID = '^{id}(-.*)?$'
 OSTREE_VERSION = '^.+$'
 IMAGE_VERSION = '^.+$'
 BUILD_ID = '^.+$'
 
 [branding.image_info]
-image-name = "utah"
-image-vendor = "projectbluefin"
+image-name = "{id}"
+image-vendor = "{vendor}"
 base-image-name = "hummingbird"
 
 [branding.image_info_patterns]
 image-flavor = '^(main|nvidia|gaming|nvidia-gaming)$'
-image-ref = '^ostree-image-signed:docker://ghcr\.io/projectbluefin/utah(-nvidia|-gaming|-nvidia-gaming)?$'
+image-ref = '^ostree-image-signed:docker://ghcr\.io/{vendor}/{id}(-nvidia|-gaming|-nvidia-gaming)?$'
 image-tag = '^.+$'
 fedora-version = '^\d+$'
 

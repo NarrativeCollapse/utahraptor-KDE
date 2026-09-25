@@ -140,7 +140,7 @@ jobs:
           # the part that validates their change, so run it and say plainly that
           # the flavored images cannot be built from here.
           if [ "${CAN_PUBLISH}" != "true" ]; then
-            echo "::notice title=kernel cache not published::The kernel compiled, but a fork pull request cannot write to ghcr.io/${REPO_ORGANIZATION,,}. The flavored images are not built for this PR; push the branch to projectbluefin/utah to validate them."
+            echo "::notice title=kernel cache not published::The kernel compiled, but a fork pull request cannot write to ghcr.io/${REPO_ORGANIZATION,,}. The flavored images are not built for this PR; push the branch to ${{ github.repository }} to validate them."
             echo "available=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi

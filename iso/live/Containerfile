@@ -1,13 +1,15 @@
 # Utah live ISO environment.
 # The live image is a disposable overlay around a normal Utah bootc image.
 # The host-side builder supplies the source image as an OCI ref.
-ARG SOURCE_IMAGE=localhost/utah:testing
+ARG SOURCE_IMAGE=localhost/absolution:testing
 FROM ${SOURCE_IMAGE}
 
 # TARGET_IMAGE is the published image name recorded in the installer recipe
 # and embedded offline store. SOURCE_IMAGE may be localhost for development;
 # it must never leak into the released recipe.
-ARG TARGET_IMAGE=ghcr.io/projectbluefin/utah:testing
+# The default matches config/identity.json (tests/test_identity.py); the
+# builders always pass it.
+ARG TARGET_IMAGE=ghcr.io/narrativecollapse/absolution:testing
 ARG DEBUG=0
 ENV TARGET_IMAGE=${TARGET_IMAGE} DEBUG=${DEBUG}
 

@@ -1,5 +1,8 @@
-repo_organization := env_var_or_default("REPO_ORGANIZATION", "projectbluefin")
-image := "utah"
+# The OS identity -- id, display name, registry namespace -- comes from
+# config/identity.json; see scripts/identity.py.
+repo_organization := env_var_or_default("REPO_ORGANIZATION", `python3 scripts/identity.py get vendor`)
+image := `python3 scripts/identity.py get id`
+os_name := `python3 scripts/identity.py get name`
 kernel_cache_image := "utah-kernel-cache"
 base_dir := env_var_or_default("BASE_DIR", "output")
 vm_ram := env_var_or_default("VM_RAM", "8192")
@@ -126,15 +129,17 @@ check:
     # list or flavored image names. That drift is what config/flavors.json and
     # scripts/flavors.py exist to stop: narrowing the build matrix while
     # promote and release still name images nothing produces fails late.
-    if grep -rnE 'utah-(nvidia|gaming)' .github/workflows/; then
+    # Both the OS id from config/identity.json and the upstream utah name.
+    os_id="$(python3 scripts/identity.py get id)"
+    if grep -rnE "(utah|${os_id})-(nvidia|gaming)" .github/workflows/; then
       echo 'no workflow may name a flavored image; read it from config/flavors.json' >&2
       exit 1
     fi
-    if grep -nE '(utah|\{\{ image \}\})-(nvidia|gaming)' Justfile; then
+    if grep -nE "(utah|${os_id}|\{\{ image \}\})-(nvidia|gaming)" Justfile; then
       echo 'no recipe may name a flavored image; use flavors.py image' >&2
       exit 1
     fi
-    if grep -rnE 'utah-(nvidia|gaming)' iso/scripts/; then
+    if grep -rnE "(utah|${os_id})-(nvidia|gaming)" iso/scripts/; then
       echo 'no ISO script may name a flavored image; use flavors.py image' >&2
       exit 1
     fi
@@ -142,7 +147,7 @@ check:
 # Verify branding, desktop defaults, first-boot Flatpak policy, and service
 # enablement in an already-composed image. The same verifier runs in the
 # Containerfile, so this is useful for a local image or a CI artifact.
-check-desktop-contract image_ref="localhost/utah:testing":
+check-desktop-contract image_ref=("localhost/" + image + ":testing"):
     #!/usr/bin/env bash
     set -euo pipefail
     podman run --rm --entrypoint /usr/bin/python3 \
@@ -345,7 +350,7 @@ build-local stream="testing" package_image="localhost/utah-packages:local-merged
 # result, answer Plymouth's passphrase prompt, and confirm it comes up. Needs a
 # debug ISO -- `just iso testing 1` -- because the install phase drives the
 # installer over SSH.
-luks-test iso_path="output/utah-live.iso" image="ghcr.io/projectbluefin/utah:testing":
+luks-test iso_path="output/utah-live.iso" image=`python3 scripts/identity.py ref main testing`:
     bash iso/scripts/luks-e2e.sh "{{ iso_path }}" "{{ image }}"
 
 # Boot the disk luks-test installed, with VNC and a browser console, so the
@@ -449,14 +454,14 @@ iso stream="testing" debug="0":
     ref="localhost/{{ image }}:{{ stream }}"
     podman image exists "$ref" || { echo "Image $ref not found; run just build-ghcr {{ image }} {{ stream }} main" >&2; exit 1; }
     mkdir -p "{{ base_dir }}"
-    bash iso/scripts/build-iso.sh "$ref" "$(realpath "{{ base_dir }}")/utah-live.iso" "Utah Live" "{{ debug }}" "ghcr.io/{{ repo_organization }}/{{ image }}:{{ stream }}"
+    bash iso/scripts/build-iso.sh "$ref" "$(realpath "{{ base_dir }}")/utah-live.iso" "{{ os_name }} Live" "{{ debug }}" "ghcr.io/{{ repo_organization }}/{{ image }}:{{ stream }}"
 
 # Fast live ISO via tacklebox for any flavors.json flavor, including variants
 # this project publishes no ISO for. Two stages: a rootless Flatpak bake
 # (bwrap needs the userns tacklebox's rootful customize containers lack),
 # then root assembly. Unsigned systemd-boot chain: boots with Secure Boot
 # DISABLED only. For the Secure Boot ISO use `just iso`.
-#   just iso-tacklebox main              # from localhost/utah:testing
+#   just iso-tacklebox main              # from localhost/<id>:testing
 #   just iso-tacklebox main testing ghcr testing-20260922-256d837
 iso-tacklebox flavor="main" stream="testing" repo="local" tag="" debug="0":
     #!/usr/bin/env bash

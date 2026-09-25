@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Utah — status and project information</title>
-<meta name="description" content="Build status, shipped packages, roadmap and Hummingbird background for Utah, a Bluefin-family GNOME workstation built on Fedora Hummingbird.">
-<meta property="og:title" content="Utah — status and project information">
-<meta property="og:description" content="Build status, shipped packages and roadmap for Utah, a Bluefin-family GNOME workstation built on Fedora Hummingbird.">
-<meta property="og:image" content="https://projectbluefin.github.io/utah/assets/utahraptor-900.png">
+<title>Absolution Linux — status and project information</title>
+<meta name="description" content="Build status, shipped packages, roadmap and Hummingbird background for Absolution Linux, a Universal Blue KDE Plasma workstation built on Fedora Hummingbird.">
+<meta property="og:title" content="Absolution Linux — status and project information">
+<meta property="og:description" content="Build status, shipped packages and roadmap for Absolution Linux, a Universal Blue KDE Plasma workstation built on Fedora Hummingbird.">
+<meta property="og:image" content="https://narrativecollapse.github.io/utahraptor-KDE/assets/utahraptor-900.png">
 <meta name="theme-color" content="#0c1016">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -44,19 +44,20 @@
     <div class="hero-inner">
       <div class="hero-copy reveal">
         <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> Alpha &middot; built in the open</p>
-        <h1>Utah</h1>
+        <h1>Absolution Linux</h1>
         <p class="lede">
-          A Bluefin-family GNOME&nbsp;51 workstation built on
-          <a href="#hummingbird">Fedora&nbsp;Hummingbird</a> rather than Silverblue.
+          A Universal Blue KDE&nbsp;Plasma&nbsp;6 workstation built on
+          <a href="#hummingbird">Fedora&nbsp;Hummingbird</a> rather than Kinoite &mdash;
+          a Plasma fork of Project Bluefin's Utah, with Aurora's Plasma defaults.
           Every desktop package it ships is rebuilt from source against that base
           by its own factory, and every image is bootc-native and digest-pinned.
         </p>
         <p class="sub">
-          Named for <em>Utahraptor ostrommaysorum</em>, the largest known dromaeosaur
-          &mdash; and, like the image, mostly feathers over a very fast skeleton.
+          Codenamed for <em>Utahraptor ostrommaysorum</em>, the largest known dromaeosaur,
+          after the image it grew from &mdash; mostly feathers over a very fast skeleton.
         </p>
         <div class="cta">
-          <a class="btn primary" href="https://github.com/projectbluefin/utah" rel="noopener">Repository</a>
+          <a class="btn primary" href="https://github.com/NarrativeCollapse/utahraptor-KDE" rel="noopener">Repository</a>
           <a class="btn" href="#build">Build status</a>
           <a class="btn" href="#packages">What it ships</a>
         </div>
@@ -78,7 +79,7 @@
       <div><dt>Packages installed</dt><dd data-stat="installed">&mdash;</dd></div>
       <div><dt>Documented gaps</dt><dd data-stat="unavailable">&mdash;</dd></div>
       <div><dt>Image flavors</dt><dd>4</dd></div>
-      <div><dt>Desktop</dt><dd>GNOME&nbsp;51</dd></div>
+      <div><dt>Desktop</dt><dd>KDE&nbsp;Plasma&nbsp;6</dd></div>
     </dl>
   </section>
 
@@ -114,7 +115,7 @@
 
     <div class="gaps reveal" id="gaps">
       <h3>Known gaps</h3>
-      <p>Packages Bluefin ships that no repository Utah enables can provide. Each one
+      <p>Packages Bluefin ships that no repository this image enables can provide. Each one
          carries a tracking issue, by rule &mdash; this is the documented debt, not a
          silent omission.</p>
       <ul class="gap-list" id="gap-list"></ul>
@@ -131,8 +132,8 @@
     <div class="grid roadmap" id="roadmap-grid" aria-live="polite" aria-busy="true"></div>
     <p class="note" id="roadmap-note">Loading open issues&hellip;</p>
     <p class="more">
-      <a class="btn" href="https://github.com/projectbluefin/utah/issues" rel="noopener">All issues</a>
-      <a class="btn" href="https://github.com/projectbluefin/utah/issues/new" rel="noopener">Request a feature</a>
+      <a class="btn" href="https://github.com/NarrativeCollapse/utahraptor-KDE/issues" rel="noopener">All issues</a>
+      <a class="btn" href="https://github.com/NarrativeCollapse/utahraptor-KDE/issues/new" rel="noopener">Request a feature</a>
     </p>
   </section>
 
@@ -145,17 +146,17 @@
         <p>
           Hummingbird is Red Hat's minimal, bootc-native Fedora base: a bootable
           container image with a server-shaped package set, its own
-          <code>hum</code> disttag, and no desktop at all. Utah is what happens when
-          you put a full GNOME workstation on top of it.
+          <code>hum</code> disttag, and no desktop at all. Absolution Linux is what
+          happens when you put a full KDE Plasma workstation on top of it.
         </p>
         <p>
           That choice is the reason this project has a package factory. Hummingbird
           ships the bootable base and rebuilt core libraries; it does not ship
-          GNOME&nbsp;51, so
+          Plasma, so a fork of
           <a href="https://github.com/projectbluefin/utah-packages" rel="noopener">utah-packages</a>
-          rebuilds the entire desktop dependency graph from upstream sources against
-          that exact ABI, and publishes it as an OCI repository Utah pins by digest.
-          Anything Hummingbird already provides, Utah takes from Hummingbird.
+          rebuilds Qt&nbsp;6, KDE Frameworks&nbsp;6 and Plasma&nbsp;6 from upstream sources
+          against that exact ABI, and publishes them as an OCI repository the image
+          pins by digest. Anything Hummingbird already provides, it takes from Hummingbird.
         </p>
         <div class="cta">
           <a class="btn primary" href="https://hummingbird-project.io/docs/" rel="noopener">Documentation</a>
@@ -167,7 +168,7 @@
         <li><span>Base image</span><code>quay.io/hummingbird-community/bootc-os</code></li>
         <li><span>Disttag</span><code>hum1</code></li>
         <li><span>Package repo</span><code>public-hummingbird-x86_64-rpms</code></li>
-        <li><span>Utah adds</span>GNOME&nbsp;51, firmware, desktop services</li>
+        <li><span>It adds</span>KDE&nbsp;Plasma&nbsp;6, firmware, desktop services</li>
       </ul>
     </div>
   </section>
@@ -175,7 +176,8 @@
 
 <footer>
   <p>
-    <a href="https://github.com/projectbluefin/utah" rel="noopener">projectbluefin/utah</a> &middot;
+    <a href="https://github.com/NarrativeCollapse/utahraptor-KDE" rel="noopener">NarrativeCollapse/utahraptor-KDE</a> &middot;
+    <a href="https://github.com/projectbluefin/utah" rel="noopener">upstream Utah</a> &middot;
     <a href="https://github.com/projectbluefin/utah-packages" rel="noopener">utah-packages</a> &middot;
     <a href="https://projectbluefin.io" rel="noopener">projectbluefin.io</a>
   </p>

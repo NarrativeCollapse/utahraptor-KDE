@@ -37,7 +37,7 @@
 #     debug    1 enables the live sshd/password path (default: 0)
 #
 # Env:
-#   REPO_ORGANIZATION        GHCR org (default: projectbluefin)
+#   REPO_ORGANIZATION        GHCR org (default: vendor in config/identity.json)
 #   TACKLEBOX_BIN            host tacklebox binary (preferred: nested podman
 #                            breaks container DNS on some hosts; extract with
 #                            podman cp from ghcr.io/tuna-os/tacklebox:latest)
@@ -81,7 +81,7 @@ STREAM="${2:-testing}"
 REPO="${3:-local}"
 TAG="${4:-$STREAM}"
 DEBUG="${5:-0}"
-ORG="${REPO_ORGANIZATION:-projectbluefin}"
+ORG="${REPO_ORGANIZATION:-$(python3 scripts/identity.py get vendor)}"
 
 # Never carry a flavored image name literally: flavors.json is the single
 # source, and `just check` fails on literals.

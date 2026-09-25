@@ -100,7 +100,7 @@ jobs:
         run: |
           set -euo pipefail
           bash iso/scripts/build-iso.sh "$IMAGE_REF" "$PWD/output/utah-live.iso" \
-            "Utah CI Live" 1 "$IMAGE_REF" 2>&1 | tee evidence/iso-build.log
+            "$(python3 scripts/identity.py get name) CI Live" 1 "$IMAGE_REF" 2>&1 | tee evidence/iso-build.log
       - name: Run existing LUKS install and desktop test
         env:
           IMAGE_REF: ${{ matrix.ref }}
@@ -262,7 +262,7 @@ jobs:
         run: |
           set -euo pipefail
           bash iso/scripts/build-iso.sh "$IMAGE_REF" "$PWD/output/utah-live.iso" \
-            "Utah Live" 0 "$IMAGE_REF"
+            "$(python3 scripts/identity.py get name) Live" 0 "$IMAGE_REF"
           (cd output && sha256sum utah-live.iso > utah-live.iso.sha256)
       # "production" is the DEBUG=0 build, not shippable media. DEBUG=0 keeps
       # the test credentials and sshd path out (iso/live/src/configure-live.sh),

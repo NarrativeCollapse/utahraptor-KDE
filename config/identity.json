@@ -1,0 +1,11 @@
+{
+  "name": "Absolution Linux",
+  "id": "absolution",
+  "codename": "Utahraptor",
+  "vendor": "narrativecollapse",
+  "repository": "NarrativeCollapse/utahraptor-KDE",
+  "home_url": "https://github.com/NarrativeCollapse/utahraptor-KDE",
+  "documentation_url": "https://github.com/NarrativeCollapse/utahraptor-KDE#readme",
+  "support_url": "https://github.com/NarrativeCollapse/utahraptor-KDE/issues/",
+  "bug_report_url": "https://github.com/NarrativeCollapse/utahraptor-KDE/issues/"
+}

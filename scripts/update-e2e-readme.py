@@ -4,6 +4,10 @@ import json
 from pathlib import Path
 import re
 
+REPOSITORY = json.loads(
+    (Path(__file__).resolve().parent.parent / "config" / "identity.json").read_text()
+)["repository"]
+
 
 def update(text, provenance):
     sha, run = provenance["source_sha"], provenance["e2e_run"]
@@ -14,7 +18,7 @@ def update(text, provenance):
              "[![Verified ISO desktop](docs/verification/screenshots/installed-fastfetch.png)]"
              "(docs/verification/README.md)\n\n"
              f"*LUKS ISO test passed for commit `{sha[:12]}`. "
-             f"[CI run](https://github.com/projectbluefin/utah/actions/runs/{run}); "
+             f"[CI run](https://github.com/{REPOSITORY}/actions/runs/{run}); "
              "[screenshots and provenance](docs/verification/README.md).*\n"
              f"{end}")
     pattern = re.compile(re.escape(begin) + r".*?" + re.escape(end), re.S)

@@ -11,24 +11,25 @@ what a flavor moves to when it is switched off, so the reason it is off stays
 next to the list rather than in a commit message.
 
     flavors.py list       ["main"]
-    flavors.py images     [{"image": "utah"}, ...]         promote
-    flavors.py releases   [{"image": "utah", "source_tag": ...}, ...]  release
+    flavors.py images     [{"image": "absolution"}, ...]   promote
+    flavors.py releases   [{"image": "absolution", "source_tag": ...}, ...]  release
     flavors.py needs-kernel   true / false
     flavors.py list-main      ["main"]            flavors that build on the pristine base
     flavors.py list-kernel    ["nvidia", ...]     flavors that build on the kernel cache
-    flavors.py image FLAVOR   utah / utah-nvidia  published image name for flavor
+    flavors.py image FLAVOR   absolution / absolution-nvidia  published image name
+
+Image names are the OS id from config/identity.json, suffixed with the flavor
+unless it is main, so renaming the OS renames every published image with it.
 """
 import json
 import sys
 from pathlib import Path
 
 CONFIG = Path(__file__).resolve().parent.parent / "config" / "flavors.json"
-IMAGE = {
-    "main": "utah",
-    "nvidia": "utah-nvidia",
-    "gaming": "utah-gaming",
-    "nvidia-gaming": "utah-nvidia-gaming",
-}
+IDENTITY = CONFIG.with_name("identity.json")
+KNOWN = ("main", "nvidia", "gaming", "nvidia-gaming")
+_id = json.loads(IDENTITY.read_text())["id"]
+IMAGE = {f: _id if f == "main" else f"{_id}-{f}" for f in KNOWN}
 
 flavors = json.loads(CONFIG.read_text())["flavors"]
 unknown = [f for f in flavors if f not in IMAGE]

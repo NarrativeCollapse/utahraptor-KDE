@@ -1,8 +1,13 @@
-# Utah — Agent Operating Contract
+# Absolution Linux — Agent Operating Contract
 
-Utah composes [Bluefin](https://projectbluefin.io) on the Fedora Hummingbird
-`bootc-os` base. Experimental pre-alpha: it has a build, not users. Nothing is
-published — no image, no ISO artifact, no installer.
+Absolution Linux is a KDE Plasma fork of Utah, which composes
+[Bluefin](https://projectbluefin.io) on the Fedora Hummingbird `bootc-os`
+base. It keeps Utah's machinery and internal names (`utah-*` helpers,
+`/usr/share/utah`, `packages/utah.toml`) and replaces the GNOME desktop with
+Plasma 6 and Aurora's Plasma profile. Experimental pre-alpha: it does not
+build until the package factory publishes Plasma
+([`docs/skills/plasma-migration.md`](docs/skills/plasma-migration.md)).
+Nothing is published — no image, no ISO artifact, no installer.
 
 ## Read order
 
@@ -21,10 +26,10 @@ published — no image, no ISO artifact, no installer.
 just check                            # full static validation (run before every commit)
 just check-parity                     # bluefin.toml must equal upstream base.toml (network)
 just check-repos                      # contract packages resolvable in enabled repos (network)
-just build-ghcr utah testing main     # local image build -> localhost/utah:testing
+just build-ghcr absolution testing main  # local image build -> localhost/absolution:testing
 just check-desktop-contract           # in-image verifiers against a built image
 just generate-bootable-image testing  # bootc install to-disk -> output/bootable.raw
-just boot-vm                          # QEMU/noVNC; confirm GDM + GNOME Shell render
+just boot-vm                          # QEMU/noVNC; confirm the Plasma greeter + desktop render
 just iso testing && just boot-iso     # live ISO build + boot (see docs/skills/local-testing.md)
 ```
 
@@ -40,16 +45,24 @@ checks (`scripts/check-skill-frontmatter.sh`, `scripts/check-skill-index.sh`,
   `projectbluefin/bluefin` `build_files/packages/base.toml`. Never hand-edit
   it; sync it verbatim from upstream. CI diffs it on every run
   (`just check-parity`).
-- **Utah's own package changes live in `packages/utah.toml`** (`[gnome]`,
-  `[build]`, `[unavailable]`). Every `[unavailable]` entry MUST carry a
-  tracking issue. A missing contract package is a build failure, never a
-  silent skip.
+- **The image's own package changes live in `packages/utah.toml`**
+  (`[plasma]`, `[parity]`, `[hardware]`, `[services]`, `[not_on_plasma]`,
+  `[unavailable]`). Every `[unavailable]` entry MUST carry a tracking issue;
+  every `[not_on_plasma]` entry MUST carry its reason. A missing contract
+  package is a build failure, never a silent skip.
+- **`config/identity.json` is the single source of the OS identity** (name,
+  id, codename, registry namespace, URLs). Consumers read it; the few literal
+  copies (Containerfile ARG defaults and labels, the live ISO Containerfile)
+  are held to it by `tests/test_identity.py`. Never spell the OS name or id
+  into a file that can read the identity instead.
 - **`config/flavors.json` is the single source of the flavor set.** No
-  workflow or Justfile recipe may name `utah-nvidia` or `utah-gaming`
-  literally — `just check` fails on it. Retire a flavor by moving it under
+  workflow or Justfile recipe may name a flavored image (`absolution-nvidia`,
+  `utah-gaming`, ...) literally — `just check` fails on it. Image names come
+  from `scripts/flavors.py`, which derives them from the OS id. Retire a flavor by moving it under
   `retired` with the reason.
 - **Containerfile ARG digests are Renovate-managed pins** (`BASE_IMAGE`,
-  `PACKAGE_IMAGE_SHA`, `COMMON_IMAGE_SHA`, `BREW_IMAGE_SHA`). Do not bump them
+  `PACKAGE_IMAGE_SHA`, `COMMON_IMAGE_SHA`, `AURORA_COMMON_IMAGE_SHA`,
+  `BREW_IMAGE_SHA`). Do not bump them
   by hand unless the task is exactly that. `Containerfile` and
   `Containerfile.kernel` must share the same `BASE_IMAGE` line; `just check`
   asserts it.

@@ -187,7 +187,7 @@ class CompliantImageTests(VerifyModeTests):
     def test_a_compliant_image_passes_and_reports_its_counts(self):
         code, out, errors = self.verify()
         self.assertEqual(code, 0, errors)
-        self.assertIn("Utah desktop contract passed", out)
+        self.assertIn("Desktop contract passed", out)
         self.assertIn(f"{len(APPS)} Flatpaks", out)
         self.assertIn("1 enabled services", out)
         self.assertIn("1 masked services", out)
@@ -379,6 +379,76 @@ class FailClosedTests(VerifyModeTests):
             with patch("sys.stdout"), patch.object(desktop.sys, "stderr"):
                 self.assertEqual(desktop.main(), 1)
 
+
+
+class IdentityTemplateTests(VerifyModeTests):
+    """The contract names the OS identity as {name}, {id}, ... placeholders,
+    filled from config/identity.json as installed in the image, so renaming
+    the OS is an edit to one file and never to the contract."""
+
+    IDENTITY = {"name": "Test OS", "id": "testos", "codename": "Raptor",
+                "vendor": "example", "repository": "Example/test-os",
+                "home_url": "https://example.test", "documentation_url": "https://example.test/doc",
+                "support_url": "https://example.test/s", "bug_report_url": "https://example.test/b"}
+
+    def templated(self):
+        contract = base_contract()
+        contract["branding"]["identity"] = "/usr/share/utah/identity.json"
+        contract["branding"]["os_release"] = {"NAME": "{name}", "ID": "{id}"}
+        contract["branding"]["os_release_patterns"] = {"PRETTY_NAME": r"^{name} \(Version: .+\)$"}
+        contract["branding"]["image_info"] = {"image-name": "{id}"}
+        contract["branding"]["image_info_patterns"] = {}
+        return contract
+
+    def setUp(self):
+        super().setUp()
+        self.write("/usr/share/utah/identity.json", json.dumps(self.IDENTITY))
+        self.write("/usr/lib/os-release", self.os_release_text(
+            {"NAME": "Test OS", "ID": "testos", "PRETTY_NAME": "Test OS (Version: 1)"}))
+        self.write("/usr/share/ublue-os/image-info.json", json.dumps({"image-name": "testos"}))
+
+    def test_placeholders_are_filled_from_the_image_identity(self):
+        code, out, errors = self.verify(self.templated())
+        self.assertEqual(code, 0, errors)
+        self.assertIn("Desktop contract passed", out)
+
+    def test_an_image_whose_os_release_disagrees_with_the_identity_fails(self):
+        self.write("/usr/lib/os-release", self.os_release_text(
+            {"NAME": "Utah", "ID": "testos", "PRETTY_NAME": "Test OS (Version: 1)"}))
+        self.assert_rejected(self.templated(), naming="os-release NAME must be 'Test OS'")
+
+    def test_identity_values_are_regex_escaped_in_patterns(self):
+        # "Test.OS" must not match "TestXOS": a dot in a name is a dot.
+        identity = dict(self.IDENTITY, name="Test.OS")
+        self.write("/usr/share/utah/identity.json", json.dumps(identity))
+        self.write("/usr/lib/os-release", self.os_release_text(
+            {"NAME": "Test.OS", "ID": "testos", "PRETTY_NAME": "TestXOS (Version: 1)"}))
+        self.assert_rejected(self.templated(), naming="PRETTY_NAME must match")
+
+    def test_a_missing_identity_file_fails_rather_than_passing_unexpanded(self):
+        self.remove("/usr/share/utah/identity.json")
+        code, _, errors = self.verify(self.templated())
+        self.assertEqual(code, 1)
+        self.assertIn("cannot read the OS identity", errors)
+
+    def test_check_mode_rejects_an_unknown_placeholder(self):
+        contract = self.templated()
+        contract["branding"]["os_release"]["NAME"] = "{nmae}"
+        errors = desktop.validate_contract(contract)
+        self.assertTrue(any("nmae" in e for e in errors), errors)
+
+    def test_the_shipped_contract_expands_to_the_shipped_identity(self):
+        import tomllib
+        identity = json.loads((ROOT / "config/identity.json").read_text())
+        contract = tomllib.loads((ROOT / "contracts/bluefin-desktop.toml").read_text())
+        branding = contract["branding"]
+        self.assertEqual(desktop.expand_identity(branding, identity), [])
+        self.assertEqual(branding["os_release"]["NAME"], identity["name"])
+        self.assertEqual(branding["image_info"]["image-name"], identity["id"])
+        import re
+        for flavor in ("", "-nvidia", "-gaming", "-nvidia-gaming"):
+            ref = f"ostree-image-signed:docker://ghcr.io/{identity['vendor']}/{identity['id']}{flavor}"
+            self.assertRegex(ref, branding["image_info_patterns"]["image-ref"])
 
 if __name__ == "__main__":
     unittest.main()

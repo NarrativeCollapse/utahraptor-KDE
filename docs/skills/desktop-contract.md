@@ -59,16 +59,21 @@ The TOML's sections are the contract's table of contents:
 
 - **`[branding]`** — files that must exist (Aurora's look-and-feel package
   and default layout, the distributor logo, the default background, fastfetch
-  and Bazaar count files) plus the os-release identity. The identity fields are exact values:
-  `NAME=Utah`, `ID=utah`, `ID_LIKE=fedora`, `VERSION_CODENAME=Utahraptor`,
-  `DEFAULT_HOSTNAME=utah`, `IMAGE_ID=utah`, and the projectbluefin.io URLs.
-  `[branding.os_release_patterns]` shapes the fields the build generates:
-  `PRETTY_NAME` is `Utah (Version: ...)`, `VERSION` carries `(Hummingbird)`,
-  `VARIANT_ID` starts with `utah`. The verifier reads `/usr/lib/os-release`.
+  and Bazaar count files) plus the os-release identity. The identity is not
+  written into the contract: `identity = "/usr/share/utah/identity.json"`
+  names the file (installed from `config/identity.json`), and the values use
+  `{name}`, `{id}`, `{codename}`, `{vendor}` and the URL keys as placeholders
+  the verifier fills from it -- regex-escaped inside patterns. So `NAME` is
+  `{name}`, `ID`, `IMAGE_ID` and `DEFAULT_HOSTNAME` are `{id}`, `CPE_NAME` is
+  `cpe:/o:{vendor}:{id}`, `PRETTY_NAME` must match `{name} (Version: ...)`,
+  `VERSION` carries `(Hummingbird)`, `VARIANT_ID` starts with `{id}`. The
+  verifier reads `/usr/lib/os-release`; `--check` rejects an unknown
+  placeholder; an image without the identity file fails.
 - **`[branding.image_info]`** — `/usr/share/ublue-os/image-info.json` must
-  name image `utah`, vendor `projectbluefin`, base `hummingbird`, with the
-  flavor pattern `(main|nvidia|gaming|nvidia-gaming)` and the matching
-  `ostree-image-signed` ref pattern.
+  name image `{id}`, vendor `{vendor}`, base `hummingbird`, with the flavor
+  pattern `(main|nvidia|gaming|nvidia-gaming)` and the matching
+  `ostree-image-signed` ref pattern under `ghcr.io/{vendor}/{id}`.
+  `scripts/configure-branding.sh` writes both files from the same identity.
 - **`[configuration]`** — Aurora's KDE defaults must be in place and must
   still be Aurora's: `kdeglobals` names `dev.getaurora.aurora.desktop` as the
   look-and-feel package, `ksplashrc` its splash, and
@@ -148,7 +153,7 @@ or a CI artifact can be checked after the fact (recipe comment, `Justfile`,
   `utah-verify-desktop-contract /usr/share/utah/bluefin-desktop.toml`, after
   branding and services are configured; a contract failure fails the build.
 - **On demand** — `just check-desktop-contract <ref>` (default
-  `localhost/utah:testing`) podman-runs the verifier inside an
+  `localhost/<id>:testing`) podman-runs the verifier inside an
   already-composed image, with the verifier and the contract bind-mounted
   from the working tree.
 - **Off-image** — `verify-desktop-contract.py --check` validates the contract
@@ -159,5 +164,5 @@ or a CI artifact can be checked after the fact (recipe comment, `Justfile`,
 
 ```bash
 python3 scripts/verify-desktop-contract.py --check contracts/bluefin-desktop.toml
-just check-desktop-contract localhost/utah:testing  # requires a locally built image
+just check-desktop-contract localhost/absolution:testing  # requires a locally built image
 ```

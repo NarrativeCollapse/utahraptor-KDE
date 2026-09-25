@@ -14,14 +14,14 @@
 
 /* The only place workflows are named. Adding or moving one is a line here. */
 const WORKFLOWS = [
-  { repo: "projectbluefin/utah", file: "build.yml", branch: "main",
-    title: "Build Utah", desc: "Four flavors: main, nvidia, gaming, nvidia-gaming." },
-  { repo: "projectbluefin/utah", file: "build.yml", branch: "testing",
-    title: "Build Utah", desc: "The stream the ISO and promotion gates run against." },
-  { repo: "projectbluefin/utah", file: "post-testing-e2e.yml", branch: "main",
+  { repo: "NarrativeCollapse/utahraptor-KDE", file: "build.yml", branch: "main",
+    title: "Build image", desc: "Four flavors: main, nvidia, gaming, nvidia-gaming." },
+  { repo: "NarrativeCollapse/utahraptor-KDE", file: "build.yml", branch: "testing",
+    title: "Build image", desc: "The stream the ISO and promotion gates run against." },
+  { repo: "NarrativeCollapse/utahraptor-KDE", file: "post-testing-e2e.yml", branch: "main",
     title: "ISO end-to-end", desc: "Boots the live ISO, installs to an encrypted disk, proves the desktop starts." },
   { repo: "projectbluefin/utah-packages", file: "rebuild-rpms.yml", branch: "main",
-    title: "Package factory", desc: "Rebuilds the GNOME dependency graph against Hummingbird." },
+    title: "Package factory", desc: "Upstream Utah's factory; this fork's Plasma factory is not set up yet." },
 ];
 
 const API = "https://api.github.com";
@@ -179,7 +179,7 @@ function renderPackages() {
 
     const details = el("details", "pkg-group");
     // Collapse only when everything is on show and there is no search to answer.
-    details.open = Boolean(needle) || group !== "all" || entry.id === "gnome";
+    details.open = Boolean(needle) || group !== "all" || entry.id === "plasma";
     const summary = el("summary");
     summary.append(el("h3", null, entry.title), el("span", "tally", String(matches.length)));
     summary.append(el("p", "blurb", entry.blurb));
@@ -215,7 +215,7 @@ function renderGaps(data) {
     item.append(el("span", "name", gap.name));
     for (const number of gap.issues) {
       const link = el("a", null, `#${number}`);
-      link.href = `https://github.com/projectbluefin/utah/issues/${number}`;
+      link.href = `https://github.com/NarrativeCollapse/utahraptor-KDE/issues/${number}`;
       link.rel = "noopener";
       item.append(link);
     }
@@ -330,7 +330,7 @@ async function loadRoadmap() {
 
   try {
     const issues = await getJSON(
-      `${API}/repos/projectbluefin/utah/issues?state=open&sort=created&direction=desc&per_page=60`);
+      `${API}/repos/NarrativeCollapse/utahraptor-KDE/issues?state=open&sort=created&direction=desc&per_page=60`);
     const real = issues.filter((issue) => !issue.pull_request);
     // Trackers first: they are the roadmap, the rest is the queue behind it.
     real.sort((a, b) => (isTracker(b) ? 1 : 0) - (isTracker(a) ? 1 : 0));
