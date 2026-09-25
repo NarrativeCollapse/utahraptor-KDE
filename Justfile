@@ -211,6 +211,14 @@ check-parity:
       exit 1
     fi
 
+# Plasma migration, step 1: resolve Utah's contract with GNOME swapped for
+# Plasma, Fedora 44 enabled at the lowest priority inside a throwaway
+# container. Whatever resolves from Fedora is the package factory's build list.
+# Never an image input. Needs podman and network; results in output/plasma-closure/.
+# See docs/skills/plasma-migration.md.
+plasma-closure *args:
+    python3 scripts/plasma-closure.py {{ args }}
+
 # Re-measure Utah against the published Bluefin and Dakota images: package
 # lists and user-visible files from inside each image, and Dakota's SBOM.
 # Needs podman and gh. Then review baselines/GAP.md and triage new gaps.

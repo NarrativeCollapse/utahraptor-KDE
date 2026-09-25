@@ -128,6 +128,25 @@
       "doc_type": "policy"
     },
     {
+      "id": "plasma-migration",
+      "name": "plasma-migration",
+      "one_line_purpose": "Plan and measure the migration of Utah's desktop from GNOME to KDE Plasma.",
+      "entry_point": "docs/skills/plasma-migration.md",
+      "category": "contracts",
+      "status": "active",
+      "tags": [
+        "plasma",
+        "kde",
+        "migration",
+        "packages",
+        "closure"
+      ],
+      "description": "The GNOME-to-Plasma migration plan, its step order, and the Plasma closure experiment (just plasma-closure) that sizes the package factory work. Use when working on any step of the Plasma migration.",
+      "version": "1.0",
+      "last_updated": "2026-09-25",
+      "doc_type": "runbook"
+    },
+    {
       "id": "skill-improvement",
       "name": "skill-improvement",
       "one_line_purpose": "Capture durable agent learnings in maintained docs.",
