@@ -66,9 +66,9 @@ than being noticed later.
 
 | | count |
 | --- | --- |
-| Bluefin contract installed | **57** |
+| Bluefin contract installed | **51** |
 | Utah additions (KDE Plasma 6, base-image parity, device firmware, desktop services) | 93 |
-| Genuinely unavailable | **10** |
+| Genuinely unavailable | **8** |
 
 The install writes its resolved list to `/usr/share/utah/contract.txt` and the
 verify step asserts *that file*, so the two cannot disagree. These counts are

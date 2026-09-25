@@ -9,6 +9,7 @@
 #   [plasma]       KDE Plasma 6 desktop contract Hummingbird does not ship
 #   [parity]       what Bluefin gets from Fedora's base image and Hummingbird has
 #   [hardware]     device firmware the bootable base leaves out entirely
+#   [not_on_plasma] Bluefin contract packages that only serve a GNOME session
 #   [unavailable]  Bluefin contract packages none of Utah's repositories provide
 #
 # On [multimedia_overrides], which Utah deliberately does not install:
@@ -272,6 +273,53 @@ packages = [
     "tailscale",
 ]
 
+[not_on_plasma]
+# Bluefin contract packages this image deliberately does not install, because
+# they exist to serve a GNOME session and have no job on a Plasma desktop.
+# packages/bluefin.toml stays a verbatim copy of Bluefin's manifest; this is
+# where the Plasma image records, per package, why it departs from it. Unlike
+# [unavailable] these are not gaps waiting on a factory recipe -- they are
+# decisions -- so each carries its reason rather than a tracking issue.
+# install-packages.py drops them from the install set, verify-rpm-contract.py
+# does not assert them, and `install-packages.py --check` fails if one is no
+# longer in Bluefin's manifest.
+#
+# adw-gtk3-theme
+#   The libadwaita look for GTK3 apps, to match GNOME. On Plasma, GTK apps
+#   follow Breeze through breeze-gtk and kde-gtk-config ([plasma]).
+#
+# gnome-ponytail-daemon, python3-gnome-ponytail-daemon
+#   Remote input for GNOME's Wayland session over Mutter's D-Bus API. KWin
+#   has its own remote-desktop portal; nothing on Plasma talks to ponytail.
+#
+# gnome-tweaks
+#   A settings front end for GNOME Shell and Mutter options. Plasma's System
+#   Settings covers the same ground.
+#
+# nautilus-gsconnect
+#   GSConnect's Nautilus menu. There is no Nautilus or GSConnect here; the
+#   KDE side of the same protocol is KDE Connect.
+#
+# libgda, libgda-sqlite
+#   Runtime dependencies of the Copyous GNOME Shell extension
+#   (bluefin#1210), and of nothing else in the contract. They were listed
+#   under [unavailable] (#106) while the image was GNOME; with no GNOME Shell
+#   there is nothing for them to serve.
+#
+# firewall-config
+#   firewalld's GTK front end. Aurora removes it in favour of
+#   plasma-firewall, which [plasma] installs, and so does this image.
+packages = [
+    "adw-gtk3-theme",
+    "gnome-ponytail-daemon",
+    "python3-gnome-ponytail-daemon",
+    "gnome-tweaks",
+    "nautilus-gsconnect",
+    "libgda",
+    "libgda-sqlite",
+    "firewall-config",
+]
+
 [unavailable]
 # Packages Bluefin ships that none of Utah's repositories provide.  Each entry
 # MUST carry a tracking issue: this list is the documented parity debt, not a
@@ -305,8 +353,8 @@ packages = [
 #
 # firefox
 #   Utah installs org.mozilla.firefox as a Flatpak through the desktop
-#   contract. The RPM browser is deliberately excluded, while mozjs140 is
-#   retained for GNOME Shell. Tracked by #35 and utah-packages#112.
+#   contract. The RPM browser is deliberately excluded. Tracked by #35 and
+#   utah-packages#112.
 #
 # anaconda-live, slitherer
 #   Utah's ISO uses bootc-installer. Both alternative installer packages need
@@ -314,14 +362,6 @@ packages = [
 #   needs a working GHmac backend in Hummingbird's GLib. Slitherer also lacks
 #   its Qt WebEngine dependency closure. Match the factory's installer policy
 #   until that path is supported; tracked by #83.
-#
-# libgda, libgda-sqlite
-#   Upstream added both as runtime dependencies for the maintained Copyous
-#   extension (bluefin#1210). Neither is in the pinned factory image or in
-#   public-hummingbird-x86_64-rpms -- Hummingbird carries no package whose
-#   name contains gda at all. One factory recipe would cover both, because
-#   libgda-sqlite is a subpackage of the libgda SRPM rather than its own
-#   source. Tracked by #106.
 #
 # ppp
 #   In neither repository, and nothing in either Provides it. This one costs
@@ -349,8 +389,6 @@ packages = [
     "evolution-ews-core",
     "firefox",
     "fish",
-    "libgda",
-    "libgda-sqlite",
     "ppp",
     "slitherer",
     "zsh",

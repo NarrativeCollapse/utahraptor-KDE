@@ -146,19 +146,18 @@ class PackageSet(unittest.TestCase):
     def test_plasma_only_is_the_overlay_section(self):
         installer = load("install-packages")
         plasma = installer.section(self.OVERLAY, "plasma")
-        got = closure.package_set(ROOT, contract_too=False, keep_gnome_extras=False,
-                                  extra=["kcalc", "dolphin"])
+        got = closure.package_set(ROOT, contract_too=False, extra=["kcalc", "dolphin"])
         self.assertEqual(got[: len(plasma)], plasma)
         self.assertEqual(got[-1], "kcalc")
         self.assertEqual(len(got), len(set(got)))
 
-    def test_contract_includes_plasma_and_drops_gnome_extras(self):
+    def test_contract_includes_plasma_and_drops_not_on_plasma(self):
         installer = load("install-packages")
         got = self._package_set_with_major("44")
         self.assertIn("glibc-all-langpacks", got)
         self.assertIn("plasma-workspace", got)
         self.assertIn("cryptsetup", got)
-        self.assertFalse(set(closure.GNOME_EXTRAS) & set(got))
+        self.assertFalse(set(installer.section(self.OVERLAY, "not_on_plasma")) & set(got))
         self.assertTrue(set(installer.section(self.OVERLAY, "plasma")) <= set(got))
 
     def _package_set_with_major(self, major):
@@ -173,7 +172,7 @@ class PackageSet(unittest.TestCase):
 
         closure.load_script = patched
         try:
-            return closure.package_set(ROOT, contract_too=True, keep_gnome_extras=False, extra=[])
+            return closure.package_set(ROOT, contract_too=True, extra=[])
         finally:
             closure.load_script = real_load
 

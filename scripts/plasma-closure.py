@@ -44,17 +44,8 @@ from typing import NamedTuple
 # image installs; --extra adds names to it for an experiment. A name Fedora
 # does not carry is reported as unmatched rather than failing the run.
 #
-# Bluefin [fedora] entries that exist only to serve a GNOME session. They stay
-# in packages/bluefin.toml (a verbatim upstream copy); the experiment leaves
-# them out so the closure measures a Plasma image rather than Plasma bolted
-# onto GNOME's leftovers. --keep-gnome-extras puts them back.
-GNOME_EXTRAS = (
-    "adw-gtk3-theme",
-    "gnome-ponytail-daemon",
-    "gnome-tweaks",
-    "nautilus-gsconnect",
-    "python3-gnome-ponytail-daemon",
-)
+# Bluefin's GNOME-only packages are already left out: utah.toml's
+# [not_on_plasma] section drops them from the contract itself.
 
 FEDORA_REPOS = ("fedora-44", "fedora-44-updates")
 FEDORA_PRIORITY = 99
@@ -184,15 +175,13 @@ def origin(repo: str) -> str:
 # Inside the container
 # --------------------------------------------------------------------------
 
-def package_set(src: Path, *, contract_too: bool, keep_gnome_extras: bool,
-                extra: list[str]) -> list[str]:
+def package_set(src: Path, *, contract_too: bool, extra: list[str]) -> list[str]:
     installer = load_script("install-packages", src / "scripts/install-packages.py")
     overlay = src / "packages/utah.toml"
     if not contract_too:
         return list(dict.fromkeys(installer.section(overlay, "plasma") + extra))
     base = installer.contract(src / "packages/bluefin.toml", overlay, installer.fedora_major())
-    drop = set() if keep_gnome_extras else set(GNOME_EXTRAS)
-    return list(dict.fromkeys([p for p in base if p not in drop] + extra))
+    return list(dict.fromkeys(base + extra))
 
 
 def run_dnf(dnf: str, repos: list[str], packages: list[str], *, skip: bool,
@@ -274,9 +263,7 @@ def inside(args: argparse.Namespace) -> int:
     installer = load_script("install-packages", IN_SRC / "scripts/install-packages.py")
     dnf = installer.dnf_path()
     repos = list(installer.install_repos(Path("/etc/yum.repos.d"))) + list(FEDORA_REPOS)
-    packages = package_set(IN_SRC, contract_too=not args.plasma_only,
-                           keep_gnome_extras=args.keep_gnome_extras,
-                           extra=args.extra)
+    packages = package_set(IN_SRC, contract_too=not args.plasma_only, extra=args.extra)
     IN_OUT.mkdir(parents=True, exist_ok=True)
     (IN_OUT / "requested.txt").write_text("".join(f"{p}\n" for p in packages))
 
@@ -328,8 +315,6 @@ def host(args: argparse.Namespace) -> int:
     passthrough = []
     if args.plasma_only:
         passthrough.append("--plasma-only")
-    if args.keep_gnome_extras:
-        passthrough.append("--keep-gnome-extras")
     for name in args.extra:
         passthrough += ["--extra", name]
     with tempfile.TemporaryDirectory(prefix="utah-repodata-") as tmp:
@@ -353,8 +338,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, default=HOST_OUT)
     parser.add_argument("--plasma-only", action="store_true",
                         help="resolve the Plasma set alone, without Utah's package contract")
-    parser.add_argument("--keep-gnome-extras", action="store_true",
-                        help="keep Bluefin's GNOME-only [fedora] entries in the transaction")
     parser.add_argument("--extra", action="append", default=[], metavar="PKG",
                         help="add a package to the transaction (repeatable)")
     parser.add_argument("--inside", action="store_true", help=argparse.SUPPRESS)

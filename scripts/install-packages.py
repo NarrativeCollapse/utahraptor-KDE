@@ -133,11 +133,13 @@ def contract(base: Path, overlay: Path, major: str | None) -> list[str]:
     # Service packages are part of the desktop contract as well: 40-services.sh
     # cannot enable what the server base never installed.
     packages += section(overlay, "services")
-    unavailable = set(section(overlay, "unavailable"))
+    # [unavailable] is parity debt; [not_on_plasma] is Bluefin's GNOME-only
+    # packages, which a Plasma image leaves out on purpose.
+    skipped = set(section(overlay, "unavailable")) | set(section(overlay, "not_on_plasma"))
     # Deduplicate while preserving order so build logs stay diffable.
     seen: dict[str, None] = {}
     for pkg in packages:
-        if pkg not in unavailable:
+        if pkg not in skipped:
             seen.setdefault(pkg, None)
     return list(seen)
 
@@ -191,12 +193,22 @@ def main() -> int:
         overlap = sorted(set(unavailable) & set(packages))
         if overlap:
             raise ValueError(f"[unavailable] packages still in install set: {overlap}")
+        # A [not_on_plasma] entry records a departure from Bluefin's manifest;
+        # one that is no longer in the manifest records nothing and is stale.
+        bluefin_names = set(section(args.manifest, "fedora"))
+        for key in tomllib.loads(args.manifest.read_text()):
+            if key.startswith("fedora_v"):
+                bluefin_names |= set(section(args.manifest, key))
+        stale = sorted(set(section(overlay, "not_on_plasma")) - bluefin_names)
+        if stale:
+            raise ValueError(f"[not_on_plasma] names not in the Bluefin manifest: {stale}")
         if "utah-packages" not in repos:
             raise ValueError("utah-packages repository not found in install repositories")
         if "public-hummingbird-x86_64-rpms" not in repos:
             raise ValueError("public-hummingbird-x86_64-rpms repository not found in install repositories")
         print(f"validated {len(packages)} Bluefin parity packages")
         print(f"documented as unavailable: {len(unavailable)}")
+        print(f"left out of the Plasma image: {len(section(overlay, 'not_on_plasma'))}")
         print(f"install repositories: {', '.join(repos)}")
         return 0
 

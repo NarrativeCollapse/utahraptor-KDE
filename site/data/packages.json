@@ -6,7 +6,6 @@
       "blurb": "Packages Utah installs because Bluefin's own manifest asks for them. This file is a byte-for-byte copy of upstream's.",
       "id": "bluefin",
       "packages": [
-        "adw-gtk3-theme",
         "adwaita-fonts-all",
         "alsa-firmware",
         "alsa-tools-firmware",
@@ -18,14 +17,11 @@
         "dracut-live",
         "evtest",
         "fastfetch",
-        "firewall-config",
         "flatpak-spawn",
         "fzf",
         "gcc",
         "gcc-c++",
         "git-credential-libsecret",
-        "gnome-ponytail-daemon",
-        "gnome-tweaks",
         "google-noto-sans-cjk-vf-fonts",
         "gum",
         "gvfs-nfs",
@@ -50,11 +46,9 @@
         "make",
         "mesa-libGLU",
         "mozc",
-        "nautilus-gsconnect",
         "openrgb-udev-rules",
         "openssh-askpass",
         "pipewire-libs-extra",
-        "python3-gnome-ponytail-daemon",
         "squashfs-tools",
         "switcheroo-control",
         "waypipe",
@@ -194,8 +188,8 @@
     }
   ],
   "totals": {
-    "installed": 150,
-    "unavailable": 10
+    "installed": 144,
+    "unavailable": 8
   },
   "unavailable": [
     {
@@ -223,18 +217,6 @@
         253
       ],
       "name": "grub2-efi-x64-cdboot"
-    },
-    {
-      "issues": [
-        106
-      ],
-      "name": "libgda"
-    },
-    {
-      "issues": [
-        106
-      ],
-      "name": "libgda-sqlite"
     },
     {
       "issues": [

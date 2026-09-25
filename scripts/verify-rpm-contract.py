@@ -48,7 +48,7 @@ def main() -> int:
     overlay = args.overlay or args.manifest.with_name("utah.toml")
 
     flavor = os.environ.get("IMAGE_FLAVOR", "main")
-    unavailable = set(section(overlay, "unavailable"))
+    unavailable = set(section(overlay, "unavailable")) | set(section(overlay, "not_on_plasma"))
 
     # Prefer the set install-packages.py actually resolved. Recomputing it here
     # is what let the two drift once: install added [fedora_v<major>] for the

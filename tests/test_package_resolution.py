@@ -190,6 +190,40 @@ class ParityContractTests(unittest.TestCase):
             with self.subTest(package=pkg):
                 self.assertIn(pkg, contract)
 
+    def test_not_on_plasma_is_left_out_of_the_install_set(self):
+        contract = installer.contract(self.MANIFEST, self.OVERLAY, "44")
+        left_out = installer.section(self.OVERLAY, "not_on_plasma")
+        self.assertTrue(left_out)
+        self.assertEqual(sorted(set(left_out) & set(contract)), [])
+
+    def test_every_not_on_plasma_entry_is_in_bluefins_manifest_and_explained(self):
+        # Each entry records a departure from Bluefin's manifest, so it must
+        # name something the manifest installs, and the section's comment must
+        # say why -- a bare name is a decision with no reason attached.
+        bluefin = set(installer.section(self.MANIFEST, "fedora"))
+        text = self.OVERLAY.read_text()
+        start = text.index("\n[not_on_plasma]\n")
+        comment = text[start:text.index("packages = [", start)]
+        for pkg in installer.section(self.OVERLAY, "not_on_plasma"):
+            with self.subTest(package=pkg):
+                self.assertIn(pkg, bluefin)
+                self.assertIn(pkg, comment)
+
+    def test_check_rejects_a_stale_not_on_plasma_entry(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / "bluefin.toml"
+            overlay = Path(tmp) / "utah.toml"
+            base.write_text('[fedora]\npackages=["base"]\n')
+            overlay.write_text('[plasma]\npackages=[]\n[not_on_plasma]\npackages=["gone"]\n')
+            repos = Path(tmp) / "repos"
+            repos.mkdir()
+            (repos / "u.repo").write_text("[utah-packages]\n# utah-install: true\n"
+                                          "[public-hummingbird-x86_64-rpms]\n# utah-install: true\n")
+            with patch("sys.argv", ["install", "--check", "--repos-dir", str(repos), str(base), str(overlay)]):
+                with self.assertRaises(ValueError) as ctx:
+                    installer.main()
+            self.assertIn("gone", str(ctx.exception))
+
     def test_parity_section_duplicates_nothing(self):
         # A name both in [parity] and in bluefin.toml or another overlay section
         # is a duplicate claim the verifier rejects.

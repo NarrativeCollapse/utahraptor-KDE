@@ -52,6 +52,9 @@ policy for changing them.
     and iwlegacy packages are named explicitly — the X230's
     `iwlwifi-6000g2a-6.ucode` ships in `iwlwifi-dvm-firmware` (#97).
   - `[services]` — desktop services Bluefin adds on top of the server base.
+  - `[not_on_plasma]` — Bluefin contract packages that only serve a GNOME
+    session (adw-gtk3-theme, gnome-tweaks, the ponytail daemon, nautilus-gsconnect,
+    the Copyous extension's libgda, firewall-config).
   - `[unavailable]` — Bluefin contract packages none of Utah's repositories
     provide.
 
@@ -61,6 +64,19 @@ policy for changing them.
 **MUST carry a tracking issue**: the list is the documented parity debt, not
 a dumping ground for packages that are merely inconvenient (header comment,
 `packages/utah.toml`).
+
+## [not_on_plasma] rules
+
+`[not_on_plasma]` is a decision, not a gap: Bluefin installs these for its
+GNOME session, and a Plasma image leaves them out. `packages/bluefin.toml`
+stays a verbatim copy -- this section is where the departure is recorded.
+Each entry must be explained in the section's comment and must still be in
+Bluefin's manifest (`[fedora]` or a `[fedora_vNN]` section); `install-packages.py
+--check` fails on a stale name and `tests/test_package_resolution.py` on an
+unexplained one. The installer and `verify-rpm-contract.py` skip these names
+exactly as they skip `[unavailable]`. Aurora is not a parity target: it has
+no package manifest to copy, only a Kinoite base plus a shell script of
+additions, so its KDE-specific additions are carried in `[plasma]` instead.
 
 ## multimedia_overrides are not missing packages
 
@@ -163,9 +179,9 @@ parity gate tests against a known revision rather than moving with Bluefin's
 default branch, preventing unrelated upstream changes from breaking Utah's CI.
 Update it whenever synchronizing `packages/bluefin.toml` with upstream.
 
-Current counts, per the README "Package parity" section: 57 Bluefin contract
+Current counts, per the README "Package parity" section: 51 Bluefin contract
 packages installed, 93 Utah additions (KDE Plasma 6, base-image parity, device
-firmware, desktop services), 10 genuinely unavailable. `scripts/check-doc-counts.py` (part of
+firmware, desktop services), 8 genuinely unavailable. `scripts/check-doc-counts.py` (part of
 `just check`) recomputes these from the manifests and fails if either
 document drifts from `site/data/packages.json`.
 

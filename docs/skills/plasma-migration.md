@@ -60,8 +60,16 @@ One logical change per PR:
    see [local-testing](local-testing.md)) and no longer checks GNOME
    extensions; `luks-unlock.py` keys boot completion off the greeter unit.
    The Ghostty flatpak stays only because the e2e harness drives it.
-6. **Parity target**: move `packages/bluefin.toml` parity to Aurora's
-   manifest. This changes an `AGENTS.md` invariant; do it deliberately.
+6. **Parity target** (done): Aurora has no manifest to copy -- it installs
+   Plasma from its Kinoite base and lists its additions in a shell script
+   (`build_files/base/01-packages.sh`) -- so `packages/bluefin.toml` stays the
+   verbatim Bluefin parity copy and the AGENTS.md invariant is unchanged.
+   Bluefin entries that only serve GNOME are recorded, each with its reason,
+   in `utah.toml`'s `[not_on_plasma]`, which the installer and verifier skip
+   and `install-packages.py --check` keeps honest (a name no longer in
+   Bluefin's manifest fails). Aurora's KDE-specific additions (kate,
+   ksshaskpass, ksystemlog, plasma-firewall, plasma-wallpapers-dynamic) are in
+   `[plasma]`.
 7. **Rename and rebrand**: os-release, `projectbluefin/utah` image refs, URLs.
 
 Leave `Containerfile.kernel`, `install-ogc-kernel.sh`, `install-nvidia.sh`
@@ -87,9 +95,8 @@ What it does (`scripts/plasma-closure.py`):
   digest-verified metadata layer `just check-repos` uses) and `packages/` as
   `/etc/yum.repos.d`.
 - Composes Utah's contract via `install-packages.py`'s `contract()` -- which
-  includes `utah.toml`'s `[plasma]` section -- and drops Bluefin's GNOME-only
-  `[fedora]` entries (`GNOME_EXTRAS`). `--plasma-only` resolves `[plasma]`
-  alone.
+  includes `utah.toml`'s `[plasma]` section and already leaves out
+  `[not_on_plasma]`. `--plasma-only` resolves `[plasma]` alone.
 - Runs `dnf --assumeno install` over Utah's install repositories plus
   `fedora-44` and `fedora-44-updates` at priority 99. dnf drops a
   lower-priority package whose name a higher-priority repository carries, so
