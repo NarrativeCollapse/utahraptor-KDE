@@ -38,7 +38,7 @@ check:
     test -f packages/utah-packages.repo
     test -f system_files/shared/usr/lib/systemd/system-preset/85-utah-desktop.preset
     test -f system_files/shared/usr/lib/systemd/system/bootc-unified-storage.service.d/10-utah-local-test.conf
-    grep -q 'enable gdm.service' system_files/shared/usr/lib/systemd/system-preset/85-utah-desktop.preset
+    grep -q 'enable plasmalogin.service' system_files/shared/usr/lib/systemd/system-preset/85-utah-desktop.preset
     grep -q 'enable ublue-system-setup.service' system_files/shared/usr/lib/systemd/system-preset/85-utah-desktop.preset
     grep -q 'disable bootc-fetch-apply-updates.timer' system_files/shared/usr/lib/systemd/system-preset/85-utah-desktop.preset
     grep -q 'disable bootc-fetch-apply-updates.service' system_files/shared/usr/lib/systemd/system-preset/85-utah-desktop.preset
@@ -486,7 +486,7 @@ boot-iso:
       ghcr.io/qemus/qemu:latest
 
 # Boot the installed Utah disk through QEMU-for-Docker. Open the printed URL
-# and confirm GDM appears and the GNOME Shell desktop renders. The disk is
+# and confirm Plasma Login Manager appears and the Plasma desktop renders. The disk is
 # mounted at /boot.img and -snapshot keeps the test disposable.
 boot-vm:
     #!/usr/bin/env bash

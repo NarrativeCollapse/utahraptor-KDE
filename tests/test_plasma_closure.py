@@ -141,23 +141,25 @@ class Classification(unittest.TestCase):
 
 
 class PackageSet(unittest.TestCase):
-    def test_plasma_only(self):
+    OVERLAY = ROOT / "packages/utah.toml"
+
+    def test_plasma_only_is_the_overlay_section(self):
+        installer = load("install-packages")
+        plasma = installer.section(self.OVERLAY, "plasma")
         got = closure.package_set(ROOT, contract_too=False, keep_gnome_extras=False,
-                                  extra=["kate", "dolphin"])
-        self.assertEqual(got[: len(closure.PLASMA_PACKAGES)], list(closure.PLASMA_PACKAGES))
-        self.assertEqual(got[-1], "kate")
+                                  extra=["kcalc", "dolphin"])
+        self.assertEqual(got[: len(plasma)], plasma)
+        self.assertEqual(got[-1], "kcalc")
         self.assertEqual(len(got), len(set(got)))
 
-    def test_contract_swaps_gnome_for_plasma(self):
+    def test_contract_includes_plasma_and_drops_gnome_extras(self):
         installer = load("install-packages")
-        # rpm is not on every host; pin the release the [fedora_vNN] lookup uses.
         got = self._package_set_with_major("44")
-        gnome = set(installer.section(ROOT / "packages/utah.toml", "gnome"))
         self.assertIn("glibc-all-langpacks", got)
-        self.assertFalse((gnome - {"glibc-all-langpacks"}) & set(got))
-        self.assertFalse(set(closure.GNOME_EXTRAS) & set(got))
         self.assertIn("plasma-workspace", got)
         self.assertIn("cryptsetup", got)
+        self.assertFalse(set(closure.GNOME_EXTRAS) & set(got))
+        self.assertTrue(set(installer.section(self.OVERLAY, "plasma")) <= set(got))
 
     def _package_set_with_major(self, major):
         real_load = closure.load_script
@@ -165,6 +167,7 @@ class PackageSet(unittest.TestCase):
         def patched(name, path):
             module = real_load(name, path)
             if name == "install-packages":
+                # rpm is not on every host; pin the release [fedora_vNN] uses.
                 module.fedora_major = lambda: major
             return module
 

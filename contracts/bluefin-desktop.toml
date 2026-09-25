@@ -1,16 +1,14 @@
-# Runtime contract for Utah's Bluefin-derived desktop experience on top of
-# Hummingbird. This is intentionally separate from packages/bluefin.toml:
-# package parity proves RPMs; this file proves Utah identity, Bluefin desktop
-# defaults, and first-boot Flatpak policy.
+# Runtime contract for the Plasma desktop on top of Hummingbird. This is
+# intentionally separate from packages/bluefin.toml: package parity proves RPMs;
+# this file proves OS identity, the Plasma desktop defaults Aurora's common
+# image supplies, and first-boot Flatpak policy.
 
 [branding]
 files = [
-  "/usr/share/ublue-os/bluefin-logos/bluefin.png",
-  "/usr/share/ublue-os/bluefin-logos/chicken.png",
-  "/usr/share/ublue-os/bluefin-logos/symbols/bluefin",
-  "/usr/share/backgrounds/bluefin/01-bluefin.xml",
-  "/usr/share/backgrounds/bluefin/06-bluefin.xml",
-  "/usr/share/glib-2.0/schemas/zz0-bluefin-modifications.gschema.override",
+  "/usr/share/plasma/look-and-feel/dev.getaurora.aurora.desktop/metadata.json",
+  "/usr/share/plasma/look-and-feel/dev.getaurora.aurora.desktop/contents/layouts/org.kde.plasma.desktop-layout.js",
+  "/usr/share/icons/hicolor/scalable/distributor-logo.svg",
+  "/usr/share/backgrounds/default.xml",
   "/usr/share/ublue-os/fastfetch-user-count",
   "/usr/share/ublue-os/bazaar-install-count",
 ]
@@ -48,20 +46,25 @@ image-tag = '^.+$'
 fedora-version = '^\d+$'
 
 [configuration]
+# Aurora's KDE defaults. kde-settings puts kde-profile/default/xdg on
+# XDG_CONFIG_DIRS; these files override the ones kde-settings itself ships,
+# which is why the Containerfile applies Aurora's image after the package
+# transaction. The file_contains checks catch the RPM versions coming back.
 files = [
-  "/etc/dconf/db/distro.d/01-bluefin-folders",
-  "/etc/dconf/db/distro.d/02-bluefin-keybindings",
-  "/etc/dconf/db/distro.d/03-bluefin-ptyxis-palette",
-  "/etc/dconf/db/distro.d/locks/01-bluefin-locked-settings",
+  "/usr/share/kde-settings/kde-profile/default/xdg/kdeglobals",
+  "/usr/share/kde-settings/kde-profile/default/xdg/ksplashrc",
+  "/usr/lib/plasmalogin/defaults.conf",
 ]
 
 [configuration.file_contains]
-"/usr/share/glib-2.0/schemas/zz0-bluefin-modifications.gschema.override" = [
-  "io.github.kolunmi.Bazaar.desktop",
-  "picture-uri='file:///usr/share/backgrounds/bluefin/",
+"/usr/share/kde-settings/kde-profile/default/xdg/kdeglobals" = [
+  "LookAndFeelPackage=dev.getaurora.aurora.desktop",
 ]
-"/etc/dconf/db/distro.d/02-bluefin-keybindings" = [
-  "xdg-terminal-exec",
+"/usr/share/kde-settings/kde-profile/default/xdg/ksplashrc" = [
+  "Theme=dev.getaurora.aurora.desktop",
+]
+"/usr/lib/plasmalogin/defaults.conf" = [
+  "WallpaperPlugin=org.kde.image",
 ]
 
 [flatpak]
@@ -74,53 +77,32 @@ files = [
 brewfile = "/usr/share/ublue-os/homebrew/system-flatpaks.Brewfile"
 remote = "/etc/flatpak/remotes.d/flathub.flatpakrepo"
 remote_url = "https://dl.flathub.org/repo/"
+# Aurora's default set, in the order of its system-flatpaks.Brewfile (Aurora's
+# common image). The comparison is order-sensitive: this list is a parity
+# assertion against that Brewfile, not a sorted catalogue.
 apps = [
-  "be.alexandervanhee.gradia",
-  "com.github.PintaProject.Pinta",
   "com.github.tchx84.Flatseal",
-  "com.mattjakeman.ExtensionManager",
-  "com.ranfdev.DistroShelf",
-  "io.github.flattool.Ignition",
+  "io.github.DenysMb.Kontainer",
   "io.github.flattool.Warehouse",
   "io.github.kolunmi.Bazaar",
-  "io.gitlab.adhami3310.Impression",
   "io.missioncenter.MissionCenter",
-  "it.mijorus.smile",
-  "org.gnome.Calculator",
-  "org.gnome.Calendar",
-  "org.gnome.Characters",
-  "org.gnome.Connections",
-  "org.gnome.Contacts",
+  "org.deskflow.deskflow",
+  "org.fedoraproject.MediaWriter",
+  "org.fkoehler.KTailctl",
   "org.gnome.DejaDup",
-  "org.gnome.FileRoller",
   "org.gnome.Firmware",
-  "org.gnome.Logs",
-  "org.gnome.Loupe",
-  "org.gnome.Maps",
-  "org.gnome.NautilusPreviewer",
-  "org.gnome.Papers",
-  "org.gnome.Showtime",
-  "org.gnome.SimpleScan",
-  "org.gnome.Snapshot",
-  "org.gnome.Decibels",
-  "org.gnome.TextEditor",
-  "org.gnome.Weather",
-  "org.gnome.baobab",
-  "org.gnome.clocks",
-  "org.gnome.font-viewer",
-  "org.gtk.Gtk3theme.adw-gtk3",
-  "org.gtk.Gtk3theme.adw-gtk3-dark",
-  # Spelled lower-case because Bluefin's Brewfile spells it that way. Flathub's
-  # application id is org.mozilla.Thunderbird, so this looks like a typo
-  # upstream -- but this list is a parity assertion against their Brewfile, not
-  # against Flathub, and correcting it here would report drift that is not
-  # ours. Follow it back if Thunderbird turns out not to install.
-  #
-  # The comparison is order-sensitive, so this list is in Brewfile order, not
-  # sorted: thunderbird precedes firefox there.
+  "org.gtk.Gtk3theme.Breeze",
+  "org.kde.gwenview",
+  "org.kde.haruna",
+  "org.kde.kcalc",
+  "org.kde.kclock",
+  "org.kde.kontact",
+  "org.kde.kweather",
+  "org.kde.okular",
+  "org.kde.qrca",
+  "org.kde.skanpage",
   "org.mozilla.thunderbird",
   "org.mozilla.firefox",
-  "page.tesk.Refine",
 ]
 
 [services]
@@ -131,7 +113,7 @@ enabled = [
   "dconf-update.service",
   "flatpak-nuke-fedora.service",
   "flatpak-preinstall.service",
-  "gdm.service",
+  "plasmalogin.service",
   "input-remapper.service",
   "ublue-system-setup.service",
   "uupd.timer",

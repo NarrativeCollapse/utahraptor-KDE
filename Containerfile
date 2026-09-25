@@ -9,10 +9,17 @@ ARG PACKAGE_IMAGE_SHA=sha256:ca320b39b5f40bea9516f6f1c11e70d352c35f1c3d109b3aaf0
 ARG PACKAGE_IMAGE_REF=${PACKAGE_IMAGE}@${PACKAGE_IMAGE_SHA}
 ARG COMMON_IMAGE=ghcr.io/projectbluefin/common
 ARG COMMON_IMAGE_SHA=sha256:4603e008ff9b81444fd763fbf58bff5d5b2efd1b79f348d94d8120a4b695c6ff
+# Aurora's common image carries the Plasma half of what Bluefin's common image
+# carries for GNOME: the look-and-feel package, KDE and Plasma Login Manager
+# defaults, wallpapers, logos and Aurora's default Flatpak set. The digest is
+# the one get-aurora-dev/aurora pins in image-versions.yml.
+ARG AURORA_COMMON_IMAGE=ghcr.io/get-aurora-dev/common
+ARG AURORA_COMMON_IMAGE_SHA=sha256:977c79741f6a2fff2fb8104f69ec272215c2bf0cdeb13b95e220d3a98e85169a
 ARG BREW_IMAGE=ghcr.io/ublue-os/brew
 ARG BREW_IMAGE_SHA=sha256:e9a72571b7644b6277f0638b6a3c5e497e265e1098ab91224567acbdeb8b74ea
 
 FROM ${COMMON_IMAGE}@${COMMON_IMAGE_SHA} AS common
+FROM ${AURORA_COMMON_IMAGE}@${AURORA_COMMON_IMAGE_SHA} AS aurora-common
 FROM ${BREW_IMAGE}@${BREW_IMAGE_SHA} AS brew
 FROM ${PACKAGE_IMAGE_REF} AS packages
 FROM ${BASE_IMAGE}
@@ -68,12 +75,12 @@ COPY scripts/install-packages.py \
      scripts/mirror-shim.sh \
      scripts/verify-efi-chain.sh \
      /tmp/utah-scripts/
-# Common publishes Bluefin artwork, desktop defaults, Brewfiles, and setup
-# hooks in a separate profile from its shared system files. Both are required:
-# copying only /system_files/shared leaves a functional GNOME desktop that is
-# still visibly Hummingbird and has no default Flatpak set.
+# Bluefin's common image publishes the desktop-neutral Universal Blue plumbing
+# (setup services and hooks, ujust, Homebrew and uupd integration) in
+# /system_files/shared, and its GNOME desktop profile in /system_files/bluefin.
+# Take the plumbing only. The desktop profile comes from Aurora's common image
+# instead, applied after the package transaction -- see the configure step.
 COPY --from=common /system_files/shared /tmp/utah-common
-COPY --from=common /system_files/bluefin /tmp/utah-bluefin
 COPY --from=brew /system_files /tmp/utah-brew
 COPY system_files/shared /tmp/utah-local
 
@@ -91,15 +98,9 @@ RUN for pair in install-packages.py:utah-install-packages \
       install -Dm 0755 "/tmp/utah-scripts/${pair%%:*}" "/usr/local/libexec/${pair##*:}" || exit 1; \
     done && \
     cp -a /tmp/utah-common/. / && \
-    cp -a /tmp/utah-bluefin/. / && \
     cp -a /tmp/utah-brew/. / && \
     cp -a /tmp/utah-local/. / && \
-    rm -rf /tmp/utah-scripts /tmp/utah-common /tmp/utah-bluefin /tmp/utah-brew /tmp/utah-local && \
-    rm -f /etc/dconf/db/distro.d/05-bluefin-searchlight-extension
-# The last line drops Common's settings for the Search Light extension. Utah no
-# longer ships that extension: its shader code calls set_shader_source, which
-# GNOME 51 removed, so it errored at load and failed the ISO end-to-end test.
-# Settings for an extension the image does not carry are noise in dconf.
+    rm -rf /tmp/utah-scripts /tmp/utah-common /tmp/utah-brew /tmp/utah-local
 
 # This first check covers the flavor-independent contract only, which is why it
 # pins IMAGE_FLAVOR=main. verify-rpm-contract.py reads IMAGE_FLAVOR from the
@@ -160,6 +161,14 @@ ARG UUPD_TIMER_SHA256=bbb5f098ec33d047bdef571e0bc112364df157e0f92d73e0febab703c4
 # it applies the desktop service policy, login defaults, and update policy
 # before the final cleanup.
 #
+# Aurora's common image is applied here, after the package transaction, not
+# with the other overlays above: it overrides files kde-settings and
+# kde-settings-plasmalogin own (kdeglobals, ksplashrc, kwinrc,
+# /usr/lib/plasmalogin/defaults.conf), and applied before the transaction the
+# RPMs would silently put Fedora's versions back. Aurora applies it after its
+# packages for the same reason. Its shared files, logos and wallpapers are bind
+# mounted, so they cost no layer and leave no copy in /tmp.
+#
 # The shim mirroring and the EFI chain guard at the end belong to the same
 # step. The guard fails the build when shim has no packaged GRUB with a
 # matching prefix beside it: that shipped once, and only the post-testing
@@ -169,7 +178,11 @@ ARG UUPD_TIMER_SHA256=bbb5f098ec33d047bdef571e0bc112364df157e0f92d73e0febab703c4
 # own and cost forty seconds to commit a few megabytes. It lives in
 # scripts/mirror-shim.sh rather than inline, because as a bare && chain a
 # failure printed nothing at all -- see the comment at the top of that script.
-RUN mkdir -p /tmp/uupd && \
+RUN --mount=type=bind,from=aurora-common,source=/,target=/tmp/aurora-common,ro \
+    cp -a /tmp/aurora-common/system_files/shared/. / && \
+    cp -a /tmp/aurora-common/logos/. / && \
+    cp -a /tmp/aurora-common/wallpapers/. / && \
+    mkdir -p /tmp/uupd && \
     curl -fsSL "https://github.com/ublue-os/uupd/releases/download/${UUPD_VERSION}/uupd_Linux_x86_64.tar.gz" \
       -o /tmp/uupd/uupd_Linux_x86_64.tar.gz && \
     echo "${UUPD_SHA256}  /tmp/uupd/uupd_Linux_x86_64.tar.gz" | sha256sum --check --strict && \
@@ -217,7 +230,7 @@ RUN /usr/local/libexec/utah-clean-stage && \
     bootc container lint --fatal-warnings --skip nonempty-boot
 
 LABEL org.opencontainers.image.title="Utah"
-LABEL org.opencontainers.image.description="A Hummingbird-based Bluefin GNOME workstation"
+LABEL org.opencontainers.image.description="A Hummingbird-based Universal Blue KDE Plasma workstation"
 LABEL org.opencontainers.image.source="https://github.com/projectbluefin/utah"
 LABEL org.opencontainers.image.vendor="${IMAGE_VENDOR}"
 LABEL org.opencontainers.image.version="${VERSION}"

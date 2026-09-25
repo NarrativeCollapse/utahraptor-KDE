@@ -1,7 +1,7 @@
 """Tests for scripts/verify-rpm-contract.py.
 
 The verifier is the gate that proves a built image actually contains the RPM
-contract Utah promises: Bluefin's Fedora set, the GNOME desktop packages, the
+contract Utah promises: Bluefin's Fedora set, the Plasma desktop packages, the
 parity packages, the desktop services, and -- on NVIDIA flavors -- the NVIDIA
 userspace. Until now the only test that named it read the file as text and
 grepped for two substrings, which passes whether or not the code runs.
@@ -55,7 +55,7 @@ def write_manifest(directory: Path, fedora: list[str]) -> Path:
 def write_overlay(
     directory: Path,
     *,
-    gnome: list[str] | None = None,
+    plasma: list[str] | None = None,
     parity: list[str] | None = None,
     hardware: list[str] | None = None,
     services: list[str] | None = None,
@@ -63,7 +63,7 @@ def write_overlay(
 ) -> Path:
     path = directory / "utah.toml"
     path.write_text(
-        toml_section("gnome", gnome or [])
+        toml_section("plasma", plasma or [])
         + toml_section("parity", parity or [])
         + toml_section("hardware", hardware or [])
         + toml_section("services", services or [])
@@ -81,15 +81,15 @@ class SectionTests(unittest.TestCase):
     def test_returns_the_declared_packages_in_order(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "packages.toml"
-            path.write_text(toml_section("gnome", ["gnome-shell", "mutter"]))
+            path.write_text(toml_section("plasma", ["plasma-workspace", "kwin"]))
             self.assertEqual(
-                self.module.section(path, "gnome"), ["gnome-shell", "mutter"]
+                self.module.section(path, "plasma"), ["plasma-workspace", "kwin"]
             )
 
     def test_absent_section_is_empty_not_an_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "packages.toml"
-            path.write_text(toml_section("gnome", ["gnome-shell"]))
+            path.write_text(toml_section("plasma", ["plasma-workspace"]))
             self.assertEqual(self.module.section(path, "parity"), [])
 
     def test_section_without_a_packages_key_is_empty(self) -> None:
@@ -110,8 +110,8 @@ class IsInstalledTests(unittest.TestCase):
             self.module.subprocess, "run",
             return_value=subprocess.CompletedProcess([], 0),
         ) as run:
-            self.assertTrue(self.module.is_installed("gnome-shell"))
-        self.assertEqual(run.call_args.args[0], ["rpm", "-q", "gnome-shell"])
+            self.assertTrue(self.module.is_installed("plasma-workspace"))
+        self.assertEqual(run.call_args.args[0], ["rpm", "-q", "plasma-workspace"])
 
     def test_non_zero_exit_means_missing(self) -> None:
         with patch.object(
@@ -142,14 +142,14 @@ class CheckModeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             directory = Path(tmp)
             manifest = write_manifest(directory, ["bash"])
-            write_overlay(directory, gnome=["gnome-shell"])
+            write_overlay(directory, plasma=["plasma-workspace"])
             env = {**os.environ, "IMAGE_FLAVOR": "main"}
             result = subprocess.run(
                 [sys.executable, str(SCRIPT), "--check", str(manifest)],
                 capture_output=True, text=True, env=env, cwd=str(ROOT),
             )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("1 GNOME desktop packages", result.stdout)
+        self.assertIn("1 Plasma desktop packages", result.stdout)
 
     def test_unavailable_packages_are_dropped_from_the_fedora_set(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -166,7 +166,7 @@ class CheckModeTests(unittest.TestCase):
             manifest = write_manifest(directory, ["bash"])
             overlay = write_overlay(
                 directory,
-                gnome=["gnome-shell", "mutter"],
+                plasma=["plasma-workspace", "kwin"],
                 parity=["fastfetch", "gh", "just"],
                 hardware=["linux-firmware", "iwlwifi-dvm-firmware"],
                 services=["tailscale"],
@@ -174,7 +174,7 @@ class CheckModeTests(unittest.TestCase):
             result = self.run_check(manifest, overlay)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Verifying 1 Bluefin packages", result.stdout)
-        self.assertIn("2 GNOME desktop packages", result.stdout)
+        self.assertIn("2 Plasma desktop packages", result.stdout)
         self.assertIn("3 parity packages", result.stdout)
         self.assertIn("2 firmware packages", result.stdout)
         self.assertIn("1 desktop service packages", result.stdout)
@@ -238,8 +238,8 @@ class VerifyModeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             directory = Path(tmp)
             manifest = write_manifest(directory, ["bash"])
-            overlay = write_overlay(directory, gnome=["gnome-shell"])
-            code, out = self.run_main(manifest, overlay, {"bash", "gnome-shell"})
+            overlay = write_overlay(directory, plasma=["plasma-workspace"])
+            code, out = self.run_main(manifest, overlay, {"bash", "plasma-workspace"})
         self.assertEqual(code, 0)
         self.assertIn("All 2 contract packages are present.", out)
 
@@ -331,20 +331,20 @@ class ResolvedContractTests(unittest.TestCase):
             manifest = write_manifest(directory, ["ignored-by-the-resolved-path"])
             overlay = write_overlay(
                 directory,
-                gnome=["gnome-shell"],
+                plasma=["plasma-workspace"],
                 parity=["fastfetch", "gh"],
                 hardware=["linux-firmware"],
                 services=["tailscale"],
             )
-            installed = {"bash", "coreutils", "gnome-shell", "fastfetch", "gh",
+            installed = {"bash", "coreutils", "plasma-workspace", "fastfetch", "gh",
                          "linux-firmware", "tailscale"}
             code, out = self.run_main_with_contract(
-                "bash coreutils gnome-shell fastfetch gh linux-firmware tailscale",
+                "bash coreutils plasma-workspace fastfetch gh linux-firmware tailscale",
                 manifest, overlay, installed,
             )
         self.assertEqual(code, 0, out)
         self.assertIn("Verifying 2 Bluefin packages", out)
-        self.assertIn("1 GNOME desktop packages", out)
+        self.assertIn("1 Plasma desktop packages", out)
         self.assertIn("2 parity packages", out)
         self.assertIn("1 firmware packages", out)
         self.assertIn("1 desktop service packages", out)

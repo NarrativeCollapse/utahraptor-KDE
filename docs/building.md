@@ -18,7 +18,7 @@ ENABLE_SSHD=1 just build-ghcr utah testing main
 The image is tagged `localhost/utah:testing`. `generate-bootable-image` uses
 `bootc install to-disk` to create `output/bootable.raw`; `boot-vm` runs that disk
 with `ghcr.io/qemus/qemu` and serves the graphical console at the printed URL.
-Confirm that GDM starts and the GNOME Shell desktop renders in the web console.
+Confirm that Plasma Login Manager starts and the Plasma desktop renders in the web console.
 Override `BASE_DIR`, `VM_RAM`, or `VM_CPUS` when needed. `boot-vm` prints the
 noVNC and SSH ports; SSH is available only when the image was built with
 `ENABLE_SSHD=1`. The generated local disk carries `utah.local`, which skips

@@ -77,7 +77,7 @@ class PackageResolutionTests(unittest.TestCase):
             overlay = Path(tmp) / "utah.toml"
             base.write_text('[fedora]\npackages=["base", "unavailable"]\n'
                             '[fedora_v44]\npackages=["release-specific"]\n')
-            overlay.write_text('[gnome]\npackages=["shell"]\n'
+            overlay.write_text('[plasma]\npackages=["shell"]\n'
                                '[parity]\npackages=["manpages"]\n'
                                '[hardware]\npackages=["firmware"]\n'
                                '[services]\npackages=["resolver"]\n'
@@ -168,7 +168,7 @@ class PackageResolutionTests(unittest.TestCase):
             base = dirpath / "bluefin.toml"
             overlay = dirpath / "utah.toml"
             base.write_text('[fedora]\npackages=["base"]\n')
-            overlay.write_text('[gnome]\npackages=[]\n')
+            overlay.write_text('[plasma]\npackages=[]\n')
 
             # Missing hummingbird
             repos_dir = dirpath / "repos"
@@ -196,7 +196,7 @@ class ParityContractTests(unittest.TestCase):
         parity = installer.section(self.OVERLAY, "parity")
         self.assertEqual(len(set(parity)), len(parity))
         others = set(installer.section(ROOT / "packages/bluefin.toml", "fedora"))
-        for name in ("gnome", "services", "unavailable"):
+        for name in ("plasma", "services", "unavailable"):
             others |= set(installer.section(self.OVERLAY, name))
         self.assertEqual(sorted(set(parity) & others), [])
 

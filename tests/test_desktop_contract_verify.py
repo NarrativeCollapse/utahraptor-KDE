@@ -100,7 +100,7 @@ def base_contract():
             "remote_url": REMOTE_URL,
             "apps": list(APPS),
         },
-        "services": {"enabled": ["gdm.service"], "masked": ["bootc-fetch-apply-updates.timer"]},
+        "services": {"enabled": ["plasmalogin.service"], "masked": ["bootc-fetch-apply-updates.timer"]},
     }
 
 
@@ -117,7 +117,7 @@ class VerifyModeTests(unittest.TestCase):
         self.write("/etc/dconf/db/distro.d/01-bluefin-folders", "Bazaar App Store\n")
         self.write(BREWFILE, "".join(f'flatpak "{app}"\n' for app in APPS))
         self.write(REMOTE, f"[Flatpak Remote]\nUrl={REMOTE_URL}\n")
-        self.enabled = {"gdm.service"}
+        self.enabled = {"plasmalogin.service"}
         self.user_enabled = {"pipewire.socket", "wireplumber.service"}
         self.masked = {"bootc-fetch-apply-updates.timer"}
 
@@ -194,7 +194,7 @@ class CompliantImageTests(VerifyModeTests):
 
     def test_the_masked_count_is_omitted_when_nothing_is_masked(self):
         contract = base_contract()
-        contract["services"] = {"enabled": ["gdm.service"]}
+        contract["services"] = {"enabled": ["plasmalogin.service"]}
         code, out, errors = self.verify(contract)
         self.assertEqual(code, 0, errors)
         self.assertNotIn("masked services", out)
@@ -331,7 +331,7 @@ class RemoteTests(VerifyModeTests):
 class ServiceTests(VerifyModeTests):
     def test_a_service_that_is_not_enabled_is_named(self):
         self.enabled = set()
-        self.assert_rejected(naming="required service is not enabled: gdm.service")
+        self.assert_rejected(naming="required service is not enabled: plasmalogin.service")
 
     def test_a_service_that_is_not_masked_is_named(self):
         self.masked = set()
@@ -341,9 +341,9 @@ class ServiceTests(VerifyModeTests):
 
     def test_every_unsatisfied_unit_is_reported(self):
         contract = base_contract()
-        contract["services"] = {"enabled": ["gdm.service", "sshd.service"], "masked": []}
+        contract["services"] = {"enabled": ["plasmalogin.service", "sshd.service"], "masked": []}
         self.enabled = set()
-        errors = self.assert_rejected(contract, naming="not enabled: gdm.service")
+        errors = self.assert_rejected(contract, naming="not enabled: plasmalogin.service")
         self.assertIn("not enabled: sshd.service", errors)
 
 

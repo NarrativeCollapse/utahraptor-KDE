@@ -33,7 +33,7 @@ VALID_CONTRACT = {
         "apps": ["org.gnome.Calculator", "org.mozilla.firefox"],
         "brewfile": "/usr/share/ublue-os/firstboot/Brewfile",
     },
-    "services": {"enabled": ["gdm.service"]},
+    "services": {"enabled": ["plasmalogin.service"]},
 }
 
 
@@ -161,9 +161,9 @@ class UnitEnabledTests(unittest.TestCase):
     def run_with(self, returncode, stdout):
         result = type("R", (), {"returncode": returncode, "stdout": stdout})()
         with patch.object(desktop.subprocess, "run", return_value=result) as runner:
-            enabled = desktop.unit_enabled("gdm.service")
+            enabled = desktop.unit_enabled("plasmalogin.service")
         runner.assert_called_once()
-        self.assertEqual(runner.call_args[0][0], ["systemctl", "is-enabled", "gdm.service"])
+        self.assertEqual(runner.call_args[0][0], ["systemctl", "is-enabled", "plasmalogin.service"])
         return enabled
 
     def test_enabled_and_enabled_runtime_pass(self):

@@ -82,7 +82,7 @@ def install_repos(repo_dir: Path | None = None) -> tuple[str, ...]:
 
 
 # Utah installs only from its Hummingbird base plus the utah-packages
-# factory, which publishes every GNOME 51 and Bluefin-parity binary this
+# factory, which publishes every Plasma 6 and Bluefin-parity binary this
 # image needs rebuilt against Hummingbird. Fedora repositories are never
 # enabled at runtime: they are bootstrap material for the package factory's
 # buildroot, not a source of installed packages.
@@ -120,7 +120,7 @@ def contract(base: Path, overlay: Path, major: str | None) -> list[str]:
     packages = section(base, "fedora")
     if major:
         packages += section(base, f"fedora_v{major}")
-    packages += section(overlay, "gnome")
+    packages += section(overlay, "plasma")
     # Parity with what Bluefin inherits from Fedora's base image and Hummingbird
     # has in its repository but not in its bootable base.
     packages += section(overlay, "parity")

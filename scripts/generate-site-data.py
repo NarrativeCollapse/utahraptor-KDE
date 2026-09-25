@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Overlay sections in the order the page shows them, with the description each
 # group's card carries. Keep in step with packages/utah.toml's header.
 GROUPS = [
-    ("gnome", "GNOME 51 desktop",
+    ("plasma", "KDE Plasma 6 desktop",
      "The desktop contract Hummingbird does not ship. Built by the factory."),
     ("parity", "Base-image parity",
      "What Bluefin inherits from Fedora's base image and Hummingbird has in "

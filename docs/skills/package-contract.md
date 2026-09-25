@@ -38,7 +38,8 @@ policy for changing them.
   addition to* or *instead of* the contract lives here. The full rules are in
   the header comment of that file (cite it; do not move or copy it):
 
-  - `[gnome]` — GNOME 51 desktop contract Hummingbird does not ship.
+  - `[plasma]` — KDE Plasma 6 desktop contract Hummingbird does not ship
+    (see [plasma-migration](plasma-migration.md)).
   - `[parity]` — what Bluefin inherits from Fedora's base image and Hummingbird
     has in its repository but not in its bootable base; CI's package
     availability step resolves the real transaction and is the gate on every
@@ -141,7 +142,7 @@ releases or emit missing-module errors with empty kernel names.
   is a **build failure**. `just check-repos` reads the base and package-image
   digests from `Containerfile`, copies the same repository configuration, and
   runs `install-packages.py --resolve` inside that base. This includes the
-  release-specific Bluefin section, GNOME, services, and extension build tools.
+  release-specific Bluefin section, Plasma, parity, firmware and services.
   It needs Podman and network access. A name lookup on GitHub Pages is not
   evidence that the pinned OCI repository is complete or ABI-compatible.
   The factory's leading metadata layer is checked against the pinned manifest
@@ -163,7 +164,7 @@ default branch, preventing unrelated upstream changes from breaking Utah's CI.
 Update it whenever synchronizing `packages/bluefin.toml` with upstream.
 
 Current counts, per the README "Package parity" section: 57 Bluefin contract
-packages installed, 61 Utah additions (GNOME 51, base-image parity, device
+packages installed, 93 Utah additions (KDE Plasma 6, base-image parity, device
 firmware, desktop services), 10 genuinely unavailable. `scripts/check-doc-counts.py` (part of
 `just check`) recomputes these from the manifests and fails if either
 document drifts from `site/data/packages.json`.

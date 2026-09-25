@@ -6,7 +6,7 @@
 # addition to* (or *instead of*) that contract lives here.
 #
 # Sections:
-#   [gnome]        GNOME 51 desktop contract Hummingbird does not ship
+#   [plasma]       KDE Plasma 6 desktop contract Hummingbird does not ship
 #   [parity]       what Bluefin gets from Fedora's base image and Hummingbird has
 #   [hardware]     device firmware the bootable base leaves out entirely
 #   [unavailable]  Bluefin contract packages none of Utah's repositories provide
@@ -33,23 +33,72 @@
 #   here, it becomes the source that negativo17 is for Bluefin, and these can
 #   move into the contract as a version assertion rather than a name one.
 
-[gnome]
-# Hummingbird supplies the bootable base but not a desktop.  The pinned
-# utah-packages repository supplies the complete GNOME 51 dependency graph.
+[plasma]
+# Hummingbird supplies the bootable base but not a desktop. KDE Plasma 6, Qt 6
+# and KDE Frameworks 6 come from the pinned package factory, which rebuilds
+# them against Hummingbird the way it rebuilds GNOME for Utah; nothing here is
+# in Hummingbird's own repository. `just plasma-closure` measures what the
+# factory has to build for this list (docs/skills/plasma-migration.md).
+#
+# Names are Fedora 44's. Fedora 44 replaced SDDM with Plasma Login Manager, so
+# the login manager is plasma-login-manager (plasmalogin.service), configured
+# by kde-settings-plasmalogin and by Aurora's defaults.conf from the common
+# image. Applications arrive as Flatpaks, as on Bluefin and Aurora; only the
+# shell, its system integration, the file manager and the terminal are RPMs.
 packages = [
-    "gnome-control-center",
-    "gnome-session",
-    "gnome-settings-daemon",
-    "gnome-shell",
-    "gsettings-desktop-schemas",
-    "gtk4",
-    "libadwaita",
-    "mutter",
+    # Session, compositor and login manager
+    "plasma-workspace",
+    "plasma-desktop",
+    "kwin",
+    "plasma-login-manager",
+    "kde-settings",
+    "kde-settings-plasma",
+    "kde-settings-plasmalogin",
+    "polkit-kde",
+    "pam-kwallet",
+    # Portals: the KDE portal, and the GTK one GTK Flatpaks expect
     "xdg-desktop-portal",
-    "xdg-desktop-portal-gnome",
+    "xdg-desktop-portal-kde",
+    "xdg-desktop-portal-gtk",
+    # System integration: network, audio, power, displays, Bluetooth, disks
+    "plasma-nm",
+    "plasma-nm-openvpn",
+    "plasma-pa",
+    "powerdevil",
+    "kscreen",
+    "bluedevil",
+    "plasma-disks",
+    "plasma-thunderbolt",
+    "plasma-systemmonitor",
+    "plasma-systemsettings",
+    "kinfocenter",
+    "kde-gtk-config",
+    "flatpak-kcm",
+    "kdeplasma-addons",
+    "plasma-browser-integration",
+    # Look and feel. Aurora's look-and-feel package comes from the common
+    # image; these are the Breeze pieces it builds on.
+    "plasma-breeze",
+    "breeze-gtk",
+    "breeze-icon-theme",
+    "breeze-cursor-theme",
+    # Core applications that are RPMs on Aurora, not Flatpaks
+    "dolphin",
+    "kio-extras",
+    "kio-admin",
+    "konsole",
+    "spectacle",
+    "ark",
+    # Aurora's KDE-specific additions (get-aurora-dev/aurora
+    # build_files/base/01-packages.sh)
+    "kate",
+    "ksshaskpass",
+    "ksystemlog",
+    "plasma-firewall",
+    "plasma-wallpapers-dynamic",
     # Locale data. Hummingbird's base carries only glibc-minimal-langpack,
     # which provides C and C.UTF-8 and nothing else, so any LANG or LC_*
-    # value a user sets -- through gnome-control-center, localectl, or a
+    # value a user sets -- through System Settings, localectl, or a
     # /etc/locale.conf carried over from another install -- names a locale
     # that does not exist. Every setlocale() then warns, on every command
     # (#114). /etc/profile.d/lang.sh is meant to fall back to C.UTF-8 but

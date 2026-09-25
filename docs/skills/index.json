@@ -40,19 +40,20 @@
     {
       "id": "desktop-contract",
       "name": "desktop-contract",
-      "one_line_purpose": "Maintain Utah identity, Bluefin desktop defaults, and first-boot Flatpak policy.",
+      "one_line_purpose": "Maintain OS identity, Plasma desktop defaults, and first-boot Flatpak policy.",
       "entry_point": "docs/skills/desktop-contract.md",
       "category": "contracts",
       "status": "active",
       "tags": [
         "desktop",
         "branding",
-        "gnome",
+        "plasma",
+        "aurora",
         "flatpak"
       ],
-      "description": "The runtime desktop contract in contracts/bluefin-desktop.toml and its in-image verifiers. Use when changing branding, os-release, service presets, GNOME extensions, or first-boot Flatpak behavior.",
+      "description": "The runtime desktop contract in contracts/bluefin-desktop.toml and its in-image verifier. Use when changing branding, os-release, service presets, the Aurora common image, KDE defaults, or first-boot Flatpak behavior.",
       "version": "1.0",
-      "last_updated": "2026-09-22",
+      "last_updated": "2026-09-25",
       "doc_type": "policy"
     },
     {

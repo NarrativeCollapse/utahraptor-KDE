@@ -7,8 +7,7 @@ position, so before any factory work starts this answers one question: which
 packages, and which source RPMs, would the factory have to build?
 
 It resolves -- never installs -- one transaction on the pinned base image:
-Utah's package contract with the GNOME desktop swapped for a Plasma package
-set, against Utah's own install repositories plus Fedora 44 at the lowest
+Utah's package contract, whose [plasma] section is the desktop, against Utah's own install repositories plus Fedora 44 at the lowest
 priority. Because dnf drops any package from a lower-priority repository whose
 name a higher-priority one carries, Fedora supplies only what Hummingbird and
 the factory do not have. Everything the transaction takes from Fedora is
@@ -41,55 +40,10 @@ import tempfile
 from pathlib import Path
 from typing import NamedTuple
 
-# The Plasma session a Bluefin-shaped workstation needs, in Fedora 44 package
-# names. Deliberately a desktop, not a KDE Gear bundle: applications arrive as
-# Flatpaks the way Bluefin's GNOME apps do, so only the shell, its system
-# integration, the file manager and the terminal are here. A name Fedora does
-# not carry is reported as unmatched rather than failing the experiment.
-PLASMA_PACKAGES = (
-    # Session, compositor and login manager
-    "plasma-workspace",
-    "plasma-desktop",
-    "kwin",
-    "sddm",
-    "sddm-kcm",
-    "sddm-wayland-plasma",
-    "plasma-workspace-wayland",
-    "xdg-desktop-portal-kde",
-    "polkit-kde",
-    "kwallet-pam",
-    # System integration: network, audio, power, displays, Bluetooth, disks
-    "plasma-nm",
-    "plasma-nm-openvpn",
-    "plasma-pa",
-    "powerdevil",
-    "kscreen",
-    "bluedevil",
-    "plasma-disks",
-    "plasma-thunderbolt",
-    "plasma-systemmonitor",
-    "plasma-systemsettings",
-    "kinfocenter",
-    "kde-gtk-config",
-    "flatpak-kcm",
-    "kdeplasma-addons",
-    "plasma-browser-integration",
-    "plasma-print-manager",
-    # Look and feel
-    "breeze-gtk",
-    "breeze-icon-theme",
-    "breeze-cursor-theme",
-    "plasma-breeze",
-    # Core applications that are not Flatpaks on Bluefin-shaped images
-    "dolphin",
-    "kio-extras",
-    "kio-admin",
-    "konsole",
-    "spectacle",
-    "ark",
-    "kwrite",
-)
-
+# The Plasma set is packages/utah.toml's [plasma] section, the same list the
+# image installs; --extra adds names to it for an experiment. A name Fedora
+# does not carry is reported as unmatched rather than failing the run.
+#
 # Bluefin [fedora] entries that exist only to serve a GNOME session. They stay
 # in packages/bluefin.toml (a verbatim upstream copy); the experiment leaves
 # them out so the closure measures a Plasma image rather than Plasma bolted
@@ -101,10 +55,6 @@ GNOME_EXTRAS = (
     "nautilus-gsconnect",
     "python3-gnome-ponytail-daemon",
 )
-
-# [gnome] in utah.toml is the GNOME desktop, except for locale data, which any
-# desktop needs on Hummingbird's minimal-langpack base (#114).
-GNOME_SECTION_KEEP = ("glibc-all-langpacks",)
 
 FEDORA_REPOS = ("fedora-44", "fedora-44-updates")
 FEDORA_PRIORITY = 99
@@ -236,17 +186,13 @@ def origin(repo: str) -> str:
 
 def package_set(src: Path, *, contract_too: bool, keep_gnome_extras: bool,
                 extra: list[str]) -> list[str]:
-    plasma = list(PLASMA_PACKAGES) + extra
-    if not contract_too:
-        return list(dict.fromkeys(plasma))
     installer = load_script("install-packages", src / "scripts/install-packages.py")
-    manifest = src / "packages/bluefin.toml"
     overlay = src / "packages/utah.toml"
-    base = installer.contract(manifest, overlay, installer.fedora_major())
-    drop = set(installer.section(overlay, "gnome")) - set(GNOME_SECTION_KEEP)
-    if not keep_gnome_extras:
-        drop |= set(GNOME_EXTRAS)
-    return list(dict.fromkeys([p for p in base if p not in drop] + plasma))
+    if not contract_too:
+        return list(dict.fromkeys(installer.section(overlay, "plasma") + extra))
+    base = installer.contract(src / "packages/bluefin.toml", overlay, installer.fedora_major())
+    drop = set() if keep_gnome_extras else set(GNOME_EXTRAS)
+    return list(dict.fromkeys([p for p in base if p not in drop] + extra))
 
 
 def run_dnf(dnf: str, repos: list[str], packages: list[str], *, skip: bool,
@@ -410,7 +356,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--keep-gnome-extras", action="store_true",
                         help="keep Bluefin's GNOME-only [fedora] entries in the transaction")
     parser.add_argument("--extra", action="append", default=[], metavar="PKG",
-                        help="add a package to the Plasma set (repeatable)")
+                        help="add a package to the transaction (repeatable)")
     parser.add_argument("--inside", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     return inside(args) if args.inside else host(args)

@@ -45,15 +45,17 @@ One logical change per PR:
    `configure-services.sh`, the custom-command-list dconf file, their tests,
    and the Containerfile and `just check` lines. `just check` no longer needs
    `git submodule update`.
-4. **The swap, atomically**: `[gnome]` becomes `[plasma]` in `utah.toml`, the
-   new `PACKAGE_IMAGE` pin, `contracts/bluefin-desktop.toml` (dconf and
-   gschema become `kdeglobals` and a look-and-feel package; `org.gnome.*`
-   Flatpaks become KDE ones; `gdm.service` becomes `sddm.service`), the
-   preset, `configure-services.sh`, `configure-branding.sh`, and the
-   `COPY --from=common /system_files/bluefin` line. `just check` asserts
-   `enable gdm.service`, so a partial swap fails the gate.
-5. **Live ISO and e2e**: SDDM autologin in `iso/live/src/configure-live.sh`;
-   `iso/scripts/luks-e2e.sh` and `luks-unlock.py` drive GDM screens.
+4. **The swap** (done, except the `PACKAGE_IMAGE` pin): `[gnome]` became
+   `[plasma]` in `utah.toml`; Bluefin's GNOME profile
+   (`/system_files/bluefin`) was replaced by Aurora's common image, applied
+   after the package transaction (see [desktop-contract](desktop-contract.md));
+   the contract asserts Aurora's KDE defaults and Flatpak set; `gdm.service`
+   became `plasmalogin.service` -- Fedora 44 ships Plasma Login Manager, not
+   SDDM. **The image cannot build until the factory publishes Plasma and
+   `PACKAGE_IMAGE_SHA` points at it**: no enabled repository carries it.
+5. **Live ISO and e2e**: Plasma Login Manager autologin in
+   `iso/live/src/configure-live.sh`; `iso/scripts/luks-e2e.sh` and
+   `luks-unlock.py` drive GDM screens.
 6. **Parity target**: move `packages/bluefin.toml` parity to Aurora's
    manifest. This changes an `AGENTS.md` invariant; do it deliberately.
 7. **Rename and rebrand**: os-release, `projectbluefin/utah` image refs, URLs.
@@ -80,9 +82,10 @@ What it does (`scripts/plasma-closure.py`):
 - Starts the pinned `BASE_IMAGE` with the pinned factory's repodata (the same
   digest-verified metadata layer `just check-repos` uses) and `packages/` as
   `/etc/yum.repos.d`.
-- Composes Utah's contract via `install-packages.py`'s `contract()`, drops
-  `[gnome]` (keeping `glibc-all-langpacks`) and Bluefin's GNOME-only
-  `[fedora]` entries (`GNOME_EXTRAS`), and adds `PLASMA_PACKAGES`.
+- Composes Utah's contract via `install-packages.py`'s `contract()` -- which
+  includes `utah.toml`'s `[plasma]` section -- and drops Bluefin's GNOME-only
+  `[fedora]` entries (`GNOME_EXTRAS`). `--plasma-only` resolves `[plasma]`
+  alone.
 - Runs `dnf --assumeno install` over Utah's install repositories plus
   `fedora-44` and `fedora-44-updates` at priority 99. dnf drops a
   lower-priority package whose name a higher-priority repository carries, so
@@ -109,7 +112,7 @@ Reading the result:
 - **Upgrading or Replacing rows** mean Fedora would replace a base package.
   Priority should prevent it; if one appears, the factory needs that package
   too, or the pin is wrong.
-- **Unmatched names** mean `PLASMA_PACKAGES` names something Fedora 44 does
+- **Unmatched names** mean `[plasma]` names something Fedora 44 does
   not carry (for example a login-manager rename). Fix the list, rerun.
 
 The parser reads dnf4 and dnf5 tables; its cases are pinned in

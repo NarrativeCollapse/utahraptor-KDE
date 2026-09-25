@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 # Configure Utah's desktop services in the image, following bluefin-lts's
 # build_scripts/40-services.sh. Hummingbird deliberately ships a server preset;
-# these enablements are the part that turns the installed GNOME packages into a
+# these enablements are the part that turns the installed Plasma packages into a
 # booting workstation.
 
 set -eoux pipefail
@@ -63,7 +63,7 @@ enable_unit flatpak-preinstall.service
 # Bluetooth is firmware-less on the X230's BCM20702 (no BCM20702A1 blob is
 # needed), but the service was never enabled, so no adapter appears even with
 # bluez installed. Enable it next to the other desktop units; see #98.
-enable_unit gdm.service
+enable_unit plasmalogin.service
 enable_unit bluetooth.service
 enable_unit firewalld.service
 enable_unit fwupd.service
