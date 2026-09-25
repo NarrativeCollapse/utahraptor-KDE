@@ -1,10 +1,9 @@
 """The desktop contract gates must fail closed on a broken contract.
 
-scripts/verify-desktop-contract.py and scripts/verify-gnome-extensions.py both
-gate the build -- the first from `just check` (--check) and from the
-Containerfile against a composed image, the second from the GNOME extension
-contract -- but neither had any unit coverage, so a gate that silently stopped
-rejecting anything would still report success.
+scripts/verify-desktop-contract.py gates the build from `just check` (--check)
+and from the Containerfile against a composed image, but it had no unit
+coverage, so a gate that silently stopped rejecting anything would still
+report success.
 """
 
 import importlib.util
@@ -25,7 +24,6 @@ def load(name):
 
 
 desktop = load("verify-desktop-contract")
-extensions = load("verify-gnome-extensions")
 
 VALID_CONTRACT = {
     "branding": {"files": ["/usr/share/ublue-os/x.png"]},
@@ -208,60 +206,6 @@ class CheckModeTests(unittest.TestCase):
         reader.assert_not_called()
         unit.assert_not_called()
 
-
-class GnomeExtensionTests(unittest.TestCase):
-    def shipped_tree(self, tmp, versions="51", uuids=None):
-        base = Path(tmp) / "usr/share/gnome-shell/extensions"
-        for uuid in uuids if uuids is not None else extensions.SOURCE_EXTENSIONS:
-            path = base / uuid / "metadata.json"
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(json.dumps({"shell-version": [versions]}))
-        return Path(tmp)
-
-    def run_main(self, root):
-        with patch.object(extensions.sys, "argv", ["verify", "--root", str(root)]):
-            return extensions.main()
-
-    def test_complete_tree_declaring_gnome_51_passes(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            self.assertEqual(self.run_main(self.shipped_tree(tmp)), 0)
-
-    def test_missing_extension_fails(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            uuids = list(extensions.SOURCE_EXTENSIONS)[1:]
-            self.assertEqual(self.run_main(self.shipped_tree(tmp, uuids=uuids)), 1)
-
-    def test_extension_without_gnome_51_fails(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            self.assertEqual(self.run_main(self.shipped_tree(tmp, versions="50")), 1)
-
-    def test_invalid_metadata_fails_instead_of_raising(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = self.shipped_tree(tmp)
-            uuid = next(iter(extensions.SOURCE_EXTENSIONS))
-            (root / f"usr/share/gnome-shell/extensions/{uuid}/metadata.json").write_text("{")
-            self.assertEqual(self.run_main(root), 1)
-
-    def test_shell_versions_rejects_metadata_without_the_key(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "metadata.json"
-            path.write_text(json.dumps({"name": "x"}))
-            with self.assertRaises(ValueError):
-                extensions.shell_versions(path)
-
-    def test_shell_versions_substitutes_the_gsconnect_version_placeholder(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "metadata.json.in"
-            path.write_text('{"version": @PACKAGE_VERSION@, "shell-version": ["51"]}')
-            self.assertEqual(extensions.shell_versions(path), ["51"])
-
-    def test_source_mode_matches_the_checked_in_submodule_paths(self):
-        for uuid, relative in extensions.SOURCE_EXTENSIONS.items():
-            self.assertTrue(
-                relative == uuid + "/metadata.json" or relative.endswith("metadata.json")
-                or relative.endswith("metadata.json.in"),
-                f"{uuid} source path does not point at extension metadata: {relative}",
-            )
 
 
 class ServiceMaskParityTests(unittest.TestCase):

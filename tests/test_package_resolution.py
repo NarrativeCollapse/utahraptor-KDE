@@ -169,7 +169,7 @@ class PackageResolutionTests(unittest.TestCase):
             overlay = dirpath / "utah.toml"
             base.write_text('[fedora]\npackages=["base"]\n')
             overlay.write_text('[gnome]\npackages=[]\n')
-            
+
             # Missing hummingbird
             repos_dir = dirpath / "repos"
             repos_dir.mkdir()
@@ -190,23 +190,15 @@ class ParityContractTests(unittest.TestCase):
             with self.subTest(package=pkg):
                 self.assertIn(pkg, contract)
 
-    def test_parity_section_duplicates_nothing_but_the_build_tooling_it_keeps(self):
+    def test_parity_section_duplicates_nothing(self):
         # A name both in [parity] and in bluefin.toml or another overlay section
-        # is a duplicate claim the verifier rejects. unzip is the one deliberate
-        # overlap with [build]: configure-services.sh removes the build tooling
-        # after the extension build and has to keep unzip for the same reason
-        # it is listed here.
+        # is a duplicate claim the verifier rejects.
         parity = installer.section(self.OVERLAY, "parity")
         self.assertEqual(len(set(parity)), len(parity))
         others = set(installer.section(ROOT / "packages/bluefin.toml", "fedora"))
         for name in ("gnome", "services", "unavailable"):
             others |= set(installer.section(self.OVERLAY, name))
         self.assertEqual(sorted(set(parity) & others), [])
-        self.assertEqual(sorted(set(parity) & set(installer.section(self.OVERLAY, "build"))), ["unzip"])
-        removal = [line for line in (ROOT / "scripts/configure-services.sh").read_text().splitlines()
-                   if "remove --no-autoremove" in line]
-        self.assertEqual(len(removal), 1)
-        self.assertNotIn("unzip", removal[0])
 
     def test_verifier_asserts_the_parity_section(self):
         """The parity packages must reach the verifier's expected set.

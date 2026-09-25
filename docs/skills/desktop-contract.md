@@ -26,8 +26,9 @@ Bluefin-derived desktop experience on top of Hummingbird. It is intentionally
 separate from `packages/bluefin.toml`: package parity proves RPMs; this file
 proves Utah identity, Bluefin desktop defaults, and first-boot Flatpak policy
 (header comment, `contracts/bluefin-desktop.toml`). The contract is data; two
-verifiers enforce it — `scripts/verify-desktop-contract.py` for the TOML
-itself and `scripts/verify-gnome-extensions.py` for the bundled extensions.
+verifier enforces it — `scripts/verify-desktop-contract.py`. The image bundles
+no GNOME Shell extensions; they were removed as step 3 of the Plasma migration
+([plasma-migration](plasma-migration.md)).
 
 ## What the contract asserts
 
@@ -64,36 +65,6 @@ The TOML's sections are the contract's table of contents:
   (e.g. switching from Bluefin) do not carry active `timers.target.wants`
   symlinks that bypass uupd staging or undo manual rollbacks. Switchers can
   also manually verify or mask them if a local `/etc` symlink was preserved.
-
-## GNOME extensions are pinned submodules
-
-Bluefin's GNOME extension submodules are retained with their normal build
-step. `.gitmodules` pins eight of them by URL and branch under
-`system_files/shared/usr/share/gnome-shell/extensions/` — appindicator,
-bazaar-integration, blur-my-shell, caffeine, custom-command-list,
-dash-to-dock, gradia-integration, and gsconnect. Search Light was dropped:
-its shader code calls `set_shader_source`, which GNOME 51 removed, so the
-extension errored at load and failed the ISO end-to-end test on every
-flavor.
-
-`scripts/verify-gnome-extensions.py` asserts every one declares GNOME 51 in
-its `metadata.json`. It runs in two modes from the same script:
-
-- **Source mode** — `--source` checks the submodule checkouts in the working
-  tree; this is what `just check` runs.
-- **Installed mode** — the default checks `/usr/share/gnome-shell/extensions`
-  under an image root; this is what runs in the Containerfile as
-  `/usr/local/libexec/utah-verify-gnome-extensions`, right after
-  `utah-build-gnome-extensions`.
-
-Building GSConnect runs meson install. Because `desktop-file-utils` is not
-published by Hummingbird or Utah's repository, `scripts/build-gnome-extensions.sh`
-disables GSConnect's `update_desktop_database` meson post-install hook to avoid
-failing on the missing utility. MIME and schema databases are handled by the
-system and glib-compile-schemas. Additionally, `scripts/build-gnome-extensions.sh`
-guards `src/shell/clipboard.js` against GNOME 48+ final GTypes: wrapping
-`GSConnectShellClipboard` registration in a try/catch prevents module load failures
-on `GjsPrivate.DBusImplementation`, gracefully degrading to an inert portal on GNOME 51.
 
 ## Services and login defaults
 
@@ -165,6 +136,5 @@ or a CI artifact can be checked after the fact (recipe comment, `Justfile`,
 
 ```bash
 python3 scripts/verify-desktop-contract.py --check contracts/bluefin-desktop.toml
-python3 scripts/verify-gnome-extensions.py --source
 just check-desktop-contract localhost/utah:testing  # requires a locally built image
 ```

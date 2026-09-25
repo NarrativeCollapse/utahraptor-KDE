@@ -59,14 +59,12 @@ COPY packages/RPM-GPG-KEY-redhat-release-2 /etc/pki/rpm-gpg/
 # every downstream path expects the utah- prefix.
 COPY scripts/install-packages.py \
      scripts/verify-rpm-contract.py \
-     scripts/build-gnome-extensions.sh \
      scripts/install-ogc-kernel.sh \
      scripts/install-nvidia.sh \
      scripts/clean-stage.sh \
      scripts/configure-services.sh \
      scripts/configure-branding.sh \
      scripts/verify-desktop-contract.py \
-     scripts/verify-gnome-extensions.py \
      scripts/mirror-shim.sh \
      scripts/verify-efi-chain.sh \
      /tmp/utah-scripts/
@@ -82,14 +80,12 @@ COPY system_files/shared /tmp/utah-local
 
 RUN for pair in install-packages.py:utah-install-packages \
                 verify-rpm-contract.py:utah-verify-rpm-contract \
-                build-gnome-extensions.sh:utah-build-gnome-extensions \
                 install-ogc-kernel.sh:utah-install-ogc-kernel \
                 install-nvidia.sh:utah-install-nvidia \
                 clean-stage.sh:utah-clean-stage \
                 configure-services.sh:utah-configure-services \
                 configure-branding.sh:utah-configure-branding \
                 verify-desktop-contract.py:utah-verify-desktop-contract \
-                verify-gnome-extensions.py:utah-verify-gnome-extensions \
                 mirror-shim.sh:utah-mirror-shim \
                 verify-efi-chain.sh:utah-verify-efi-chain; do \
       install -Dm 0755 "/tmp/utah-scripts/${pair%%:*}" "/usr/local/libexec/${pair##*:}" || exit 1; \
@@ -161,8 +157,8 @@ ARG UUPD_TIMER_SHA256=bbb5f098ec33d047bdef571e0bc112364df157e0f92d73e0febab703c4
 
 # Hummingbird defaults to a server preset and disables unlisted services.
 # configure-services is the Utah equivalent of bluefin-lts's 40-services.sh:
-# it applies the desktop service policy, login defaults, update policy, and
-# removes the extension build toolchain before the final cleanup.
+# it applies the desktop service policy, login defaults, and update policy
+# before the final cleanup.
 #
 # The shim mirroring and the EFI chain guard at the end belong to the same
 # step. The guard fails the build when shim has no packaged GRUB with a
@@ -184,8 +180,6 @@ RUN mkdir -p /tmp/uupd && \
       -o /tmp/uupd/uupd.timer && \
     echo "${UUPD_SERVICE_SHA256}  /tmp/uupd/uupd.service" | sha256sum --check --strict && \
     echo "${UUPD_TIMER_SHA256}  /tmp/uupd/uupd.timer" | sha256sum --check --strict && \
-    /usr/local/libexec/utah-build-gnome-extensions && \
-    /usr/local/libexec/utah-verify-gnome-extensions && \
     glib-compile-schemas /usr/share/glib-2.0/schemas && \
     ENABLE_SSHD="${ENABLE_SSHD}" /usr/local/libexec/utah-configure-services && \
     /usr/local/libexec/utah-configure-branding && \

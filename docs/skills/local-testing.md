@@ -37,10 +37,7 @@ just generate-bootable-image testing
 just boot-vm
 ```
 
-`just check` is the gate CI runs first, and it needs the GNOME extension
-submodules initialized -- run `git submodule update --init --recursive` once,
-or the extension contract check fails with missing `metadata.json` errors
-(AGENTS.md, build section).
+`just check` is the gate CI runs first (AGENTS.md, build section).
 
 `just build-ghcr utah testing main` tags the image `localhost/utah:testing`.
 `just generate-bootable-image testing` then uses `bootc install to-disk` to

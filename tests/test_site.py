@@ -53,26 +53,11 @@ class GeneratedDataTests(unittest.TestCase):
             ROOT / "packages/bluefin.toml", ROOT / "packages/utah.toml", None)
         self.assertEqual(self.data["totals"]["installed"], len(contract))
         # Every name the page counts as shipped is one the image asks for.
-        # The build toolchain is excluded: configure-services.sh removes it
-        # before the image ships, so counting it would overstate the payload.
+        # Transient groups (build-only packages) are excluded from the count.
         shown = {name for group in self.data["groups"] if not group["transient"]
                  for name in group["packages"]}
         self.assertEqual(shown, set(contract))
 
-    def test_the_build_toolchain_is_marked_transient_and_not_counted(self):
-        build = next(g for g in self.data["groups"] if g["id"] == "build")
-        self.assertTrue(build["transient"])
-        removal = [line for line in (ROOT / "scripts/configure-services.sh").read_text().splitlines()
-                   if "remove --no-autoremove" in line]
-        self.assertEqual(len(removal), 1)
-        # Everything in the group is either removed again or kept for a
-        # documented reason (unzip is also in [parity], which the image ships).
-        kept = {name for g in self.data["groups"] if not g["transient"]
-                for name in g["packages"]}
-        for name in build["packages"]:
-            with self.subTest(package=name):
-                self.assertTrue(name in removal[0] or name in kept,
-                                f"{name} is neither removed nor shipped by another section")
 
     def test_unavailable_entries_are_the_manifest_gaps(self):
         spec = importlib.util.spec_from_file_location(

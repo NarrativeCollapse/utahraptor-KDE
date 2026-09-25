@@ -53,16 +53,9 @@ check:
     test -f scripts/configure-services.sh
     test -f scripts/configure-branding.sh
     test -f scripts/verify-desktop-contract.py
-    test -f scripts/verify-gnome-extensions.py
     test -f scripts/mirror-shim.sh
     test -f contracts/bluefin-desktop.toml
-    # The reusable image workflow checks out this repository without
-    # submodules. Populate them here before validating the source contract;
-    # otherwise CI reports every extension as missing while a developer clone
-    # (or the contract workflow's recursive checkout) passes.
-    git submodule update --init --recursive
     python3 scripts/verify-desktop-contract.py --check contracts/bluefin-desktop.toml
-    python3 scripts/verify-gnome-extensions.py --source
     # Every Bluefin package Utah lacks must be triaged (baselines/triage.toml).
     python3 scripts/image-baseline.py check
     grep -q '/system_files/bluefin' Containerfile
@@ -156,8 +149,6 @@ check-desktop-contract image_ref="localhost/utah:testing":
       -v "$PWD/contracts/bluefin-desktop.toml:/tmp/bluefin-desktop.toml:ro" \
       -v "$PWD/scripts/verify-desktop-contract.py:/tmp/verify-desktop-contract.py:ro" \
       "{{ image_ref }}" /tmp/verify-desktop-contract.py /tmp/bluefin-desktop.toml
-    podman run --rm --entrypoint /usr/bin/python3 \
-      "{{ image_ref }}" /usr/local/libexec/utah-verify-gnome-extensions
 
 # Fail fast when a contract package is in none of the repositories the image
 # actually enables, instead of discovering it twenty minutes into a build.

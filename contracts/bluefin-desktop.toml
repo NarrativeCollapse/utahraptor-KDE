@@ -52,7 +52,6 @@ files = [
   "/etc/dconf/db/distro.d/01-bluefin-folders",
   "/etc/dconf/db/distro.d/02-bluefin-keybindings",
   "/etc/dconf/db/distro.d/03-bluefin-ptyxis-palette",
-  "/etc/dconf/db/distro.d/04-bluefin-custom-command-menu",
   "/etc/dconf/db/distro.d/locks/01-bluefin-locked-settings",
 ]
 
@@ -60,10 +59,6 @@ files = [
 "/usr/share/glib-2.0/schemas/zz0-bluefin-modifications.gschema.override" = [
   "io.github.kolunmi.Bazaar.desktop",
   "picture-uri='file:///usr/share/backgrounds/bluefin/",
-]
-"/etc/dconf/db/distro.d/04-bluefin-custom-command-menu" = [
-  "Bazaar App Store",
-  "docs.projectbluefin.io",
 ]
 "/etc/dconf/db/distro.d/02-bluefin-keybindings" = [
   "xdg-terminal-exec",

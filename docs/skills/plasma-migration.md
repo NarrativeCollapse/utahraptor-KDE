@@ -39,9 +39,12 @@ One logical change per PR:
 2. **Plasma package factory.** Build the source packages from step 1 against
    Hummingbird and publish a digest-pinned OCI repository, as `utah-packages`
    does for GNOME.
-3. **Remove the GNOME Shell extensions**: `.gitmodules` submodules,
-   `build-gnome-extensions.sh`, `verify-gnome-extensions.py`, their tests,
-   the Containerfile COPY/rename/RUN lines, and the `just check` lines.
+3. **Remove the GNOME Shell extensions** (done): the `.gitmodules`
+   submodules, `build-gnome-extensions.sh`, `verify-gnome-extensions.py`, the
+   `[build]` toolchain section in `utah.toml` and its removal in
+   `configure-services.sh`, the custom-command-list dconf file, their tests,
+   and the Containerfile and `just check` lines. `just check` no longer needs
+   `git submodule update`.
 4. **The swap, atomically**: `[gnome]` becomes `[plasma]` in `utah.toml`, the
    new `PACKAGE_IMAGE` pin, `contracts/bluefin-desktop.toml` (dconf and
    gschema become `kdeglobals` and a look-and-feel package; `org.gnome.*`

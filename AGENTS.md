@@ -29,9 +29,7 @@ just iso testing && just boot-iso     # live ISO build + boot (see docs/skills/l
 ```
 
 `just check` is the gate CI runs first; a change that fails it fails the whole
-matrix. It needs the GNOME extension submodules initialized
-(`git submodule update --init --recursive`) or the extension contract check
-fails with missing `metadata.json` errors. It also runs the skill catalog
+matrix. It also runs the skill catalog
 checks (`scripts/check-skill-frontmatter.sh`, `scripts/check-skill-index.sh`,
 `python3 scripts/generate_skill_index.py --check`). Run `just check` and
 `pre-commit run --all-files` before every commit.
@@ -74,9 +72,6 @@ checks (`scripts/check-skill-frontmatter.sh`, `scripts/check-skill-index.sh`,
 ## What agents must not touch
 
 - Any `ublue-os/*` repository — read-only, no writes of any kind.
-- GNOME Shell extension submodules under
-  `system_files/shared/usr/share/gnome-shell/extensions/` — vendored, managed
-  through `.gitmodules` pins.
 
 ## PR rules
 

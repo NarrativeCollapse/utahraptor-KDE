@@ -159,19 +159,6 @@
       ],
       "title": "Desktop services",
       "transient": false
-    },
-    {
-      "blurb": "Build-only dependencies for the pinned GNOME extensions. These are removed again before the image ships, so they are listed for completeness and are not counted as installed.",
-      "id": "build",
-      "packages": [
-        "dbus-devel",
-        "glib2-devel",
-        "meson",
-        "sassc",
-        "unzip"
-      ],
-      "title": "Extension toolchain",
-      "transient": true
     }
   ],
   "totals": {

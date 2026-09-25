@@ -37,16 +37,12 @@ GROUPS = [
     ("services", "Desktop services",
      "Units Bluefin adds on top of the server base; the preset cannot enable "
      "what was never installed."),
-    ("build", "Extension toolchain",
-     "Build-only dependencies for the pinned GNOME extensions. These are "
-     "removed again before the image ships, so they are listed for "
-     "completeness and are not counted as installed."),
 ]
 
-# Sections whose packages the image builds with but does not ship.
-# configure-services.sh removes them after the extensions are built, so
-# counting them as installed would overstate what a user receives.
-TRANSIENT = {"build"}
+# Sections whose packages the image builds with but does not ship, so
+# counting them as installed would overstate what a user receives. None today:
+# the only one was the GNOME extension toolchain, removed with the extensions.
+TRANSIENT: set[str] = set()
 
 
 def _display(path: Path) -> str:

@@ -9,7 +9,6 @@
 #   [gnome]        GNOME 51 desktop contract Hummingbird does not ship
 #   [parity]       what Bluefin gets from Fedora's base image and Hummingbird has
 #   [hardware]     device firmware the bootable base leaves out entirely
-#   [build]        toolchain needed to build the pinned GNOME extensions
 #   [unavailable]  Bluefin contract packages none of Utah's repositories provide
 #
 # On [multimedia_overrides], which Utah deliberately does not install:
@@ -94,10 +93,6 @@ packages = [
 # utah-packages#136; NetworkManager-wifi joins this list when the factory
 # image that carries them is pinned (#126). Firmware is the other half and
 # lives in [hardware] below -- the radio needs both.
-#
-# unzip is also in [build]; it is listed here because configure-services.sh
-# removes the build tooling after the extension build, and Bluefin ships
-# unzip to users. The removal line skips it for that reason.
 packages = [
     # Networking
     "NetworkManager-config-connectivity-fedora",
@@ -199,25 +194,6 @@ packages = [
     "iwlwifi-mvm-firmware",
     "iwlwifi-mld-firmware",
     "iwlegacy-firmware",
-]
-
-[build]
-# Build dependencies for scripts/build-gnome-extensions.sh.
-#
-# cmake is deliberately absent, though Bluefin lists it. Every cmake in the
-# Hummingbird repository -- 4.3.0-2.1.hum1 through 4.3.0-5.1.hum1 -- requires
-# libjsoncpp.so.26, and the only jsoncpp there provides libjsoncpp.so.27, so
-# cmake cannot be installed from Hummingbird at all. It is a missed rebuild on
-# their side after the jsoncpp bump, not a gap this image has to answer for,
-# and nothing in build-gnome-extensions.sh invokes cmake: it runs make, meson,
-# unzip and glib-compile-schemas. Restore this entry once Hummingbird rebuilds
-# cmake, or if an extension ever needs it.
-packages = [
-    "dbus-devel",
-    "glib2-devel",
-    "meson",
-    "sassc",
-    "unzip",
 ]
 
 [services]
