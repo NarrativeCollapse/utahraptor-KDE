@@ -367,7 +367,11 @@ def inside_fedora() -> int:
     # measures the true closure, and Fedora's kf6-frameworkintegration-libs
     # links libpackagekitqt6, so excluding PackageKit* leaves all of Breeze
     # and everything above it unresolvable (second CI run, 2026-09-26).
-    args = [dnf, "--assumeno", "install"]
+    # Hard dependencies only. dnf installs Recommends by default, and on the
+    # image an unavailable weak dependency is skipped, not an error -- so
+    # counting weak dependencies here asked the factory to build qemu, xen,
+    # vlc, orca and most of KDE Frameworks 5 (third CI run: 430 sources).
+    args = [dnf, "--assumeno", "--setopt=install_weak_deps=False", "install"]
     args += (["--skip-unavailable"] if Path(dnf).name == "dnf5" else ["--setopt=strict=False"])
     print("+", " ".join(args), f"... ({len(packages)} packages)", flush=True)
     result = subprocess.run(args + packages, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
