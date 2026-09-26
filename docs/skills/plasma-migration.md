@@ -162,12 +162,12 @@ Fedora container ships it -- drop it by hand. That list, minus
 `fedora-release`, is the factory fork's `config/plasma-sources.txt`
 (NarrativeCollapse/utah-packages, branch `claude/vibrant-goodall-h3kfvk`).
 
-**Open issue for the first image build:** `install-packages.py` installs with
-`-x PackageKit*` (Bluefin: no second package manager writing to `/usr`). That
-exclusion also hides `PackageKit-Qt6`, which `kf6-frameworkintegration-libs`
-needs, so the Plasma install will fail until either the factory builds
-frameworkintegration without PackageKit support or the exclusion is narrowed
-to the PackageKit daemon.
+**PackageKit (resolved):** Bluefin's `-x PackageKit*` also hid
+`PackageKit-Qt6`, which `kf6-frameworkintegration-libs` links, so nothing
+from Breeze up could install. `install-packages.py` now excludes the daemon
+and its tools by name (`PACKAGEKIT_EXCLUDES`) and lets the Qt client library
+through; it only Recommends the daemon, so the daemon stays out.
+`tests/test_package_resolution.py` holds both halves.
 
 Results land in `output/plasma-closure/` (git-ignored; in CI, the
 `plasma-closure` artifact and the job summary):

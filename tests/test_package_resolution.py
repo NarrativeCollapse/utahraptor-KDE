@@ -1,6 +1,7 @@
 """The preflight must exercise the install contract and fail closed."""
 
 import contextlib
+import fnmatch
 import importlib.util
 import hashlib
 import io
@@ -90,6 +91,17 @@ class PackageResolutionTests(unittest.TestCase):
                               subprocess.CompletedProcess([], code, stdout=output)) as run:
                 rc = installer.main()
                 return rc, run.call_args.args[0]
+
+    def test_the_packagekit_daemon_is_excluded_but_its_qt_library_is_not(self):
+        # kf6-frameworkintegration-libs links libpackagekitqt6; Bluefin's
+        # PackageKit wildcard would make Breeze and everything above it
+        # uninstallable on a Plasma image. The daemon must still stay out.
+        rc, command = self.resolve("Transaction Summary:\nInstall 12 Packages\nOperation aborted.\n")
+        self.assertEqual(rc, 0)
+        excluded = [command[i + 1] for i, arg in enumerate(command) if arg == "-x"]
+        self.assertIn("PackageKit", excluded)
+        self.assertNotIn("PackageKit*", excluded)
+        self.assertFalse([p for p in excluded if fnmatch.fnmatch("PackageKit-Qt6", p)])
 
     def test_valid_declined_transaction_includes_every_install_section(self):
         rc, command = self.resolve("Transaction Summary:\nInstall 12 Packages\nOperation aborted.\n")

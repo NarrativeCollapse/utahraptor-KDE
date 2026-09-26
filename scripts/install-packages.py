@@ -95,6 +95,28 @@ def __getattr__(name: str):
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
+# Bluefin excludes PackageKit from its bulk install: an image-based system must
+# not carry a second package manager that can write to /usr. Bluefin spells
+# that as a PackageKit wildcard, which also hides the PackageKit-Qt6 client
+# library -- and KDE Frameworks' kf6-frameworkintegration-libs links it, so on
+# a Plasma image the wildcard makes Breeze and everything above it
+# uninstallable. Exclude the daemon and its tools by name instead;
+# PackageKit-Qt6 only Recommends the daemon (Fedora's PackageKit-Qt changelog:
+# -Requires/+Recommends), so the daemon stays out.
+PACKAGEKIT_EXCLUDES = (
+    "PackageKit",
+    "PackageKit-command-not-found",
+    "PackageKit-cron",
+    "PackageKit-glib*",
+    "PackageKit-gstreamer-plugin",
+    "PackageKit-gtk3-module",
+)
+
+
+def exclude_args() -> list[str]:
+    return [arg for name in PACKAGEKIT_EXCLUDES for arg in ("-x", name)]
+
+
 def section(path: Path, name: str) -> list[str]:
     data = tomllib.loads(path.read_text())
     return list(data.get(name, {}).get("packages", []))
@@ -222,7 +244,7 @@ def main() -> int:
         result = subprocess.run(
             [dnf, "--assumeno", "--disablerepo=*",
              *(f"--enablerepo={r}" for r in repos),
-             "-x", "PackageKit*", "install", *packages, *build_deps],
+             *exclude_args(), "install", *packages, *build_deps],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
             env={**os.environ, "LC_ALL": "C"}, check=False,
         )
@@ -254,12 +276,11 @@ def main() -> int:
         # Loud, not silent: a parity gap the operator should see in the log.
         print(f"NOTE: {pkg} has no source in Utah's repositories and is skipped (see packages/utah.toml)")
 
-    # Bluefin excludes PackageKit from its bulk install; an image-based system
-    # must not carry a second package manager that can write to /usr.
+    # No second package manager: see PACKAGEKIT_EXCLUDES.
     rc = run(
         dnf, "-y", "--disablerepo=*",
         *(f"--enablerepo={r}" for r in repos),
-        "-x", "PackageKit*", "install", *packages, *build_deps,
+        *exclude_args(), "install", *packages, *build_deps,
     )
     if rc:
         return rc

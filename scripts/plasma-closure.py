@@ -205,7 +205,8 @@ def run_dnf(dnf: str, repos: list[str], packages: list[str], *, skip: bool,
     args = [dnf, "--assumeno", "--disablerepo=*",
             *(f"--enablerepo={r}" for r in repos),
             *(f"--setopt={r}.priority={FEDORA_PRIORITY}" for r in FEDORA_REPOS),
-            "-x", "PackageKit*", "install"]
+            *load_script("install-packages", IN_SRC / "scripts/install-packages.py").exclude_args(),
+            "install"]
     if skip:
         if Path(dnf).name == "dnf5":
             args += ["--skip-broken", "--skip-unavailable"]
