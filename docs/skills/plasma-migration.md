@@ -38,7 +38,14 @@ One logical change per PR:
    factory build list. Not merged into any image.
 2. **Plasma package factory.** Build the source packages from step 1 against
    Hummingbird and publish a digest-pinned OCI repository, as `utah-packages`
-   does for GNOME.
+   does for GNOME. The factory is the fork `NarrativeCollapse/utah-packages`.
+   Its importer (`tools/import_bluefin_rawhide.py`, workflow
+   `import-bluefin-rawhide.yml`) imports the Rawhide recipe for each *named*
+   binary's source package and does not follow dependencies, so it is fed
+   the step 1 closure, not just `[plasma]`. Its publish path already follows
+   `github.repository_owner`; its buildroot image is still upstream's public
+   `ghcr.io/projectbluefin/utah-buildroot`, which a fork can pull but whose
+   weekly refresh it cannot push.
 3. **Remove the GNOME Shell extensions** (done): the `.gitmodules`
    submodules, `build-gnome-extensions.sh`, `verify-gnome-extensions.py`, the
    `[build]` toolchain section in `utah.toml` and its removal in
@@ -98,6 +105,14 @@ just plasma-closure --extra kate          # add names to the Plasma set
 It needs network access to `ghcr.io`, `quay.io`, `packages.redhat.com` and
 `dl.fedoraproject.org`. Claude Code web sessions with the default network
 policy deny the last three; run it locally or widen the environment's policy.
+
+The same run happens in CI: `.github/workflows/plasma-closure.yml` runs on
+every push to a `claude/**` branch that touches the script, the manifests or
+the Containerfile, and on demand. It writes `summary.md` and `srpms.txt` to
+the job summary and uploads `output/plasma-closure/` as the `plasma-closure`
+artifact -- the way to get the build list when the sandbox cannot reach the
+repositories. It needs Actions enabled on the repository; a fork has it off
+until the owner turns it on.
 
 What it does (`scripts/plasma-closure.py`):
 

@@ -1,0 +1,65 @@
+name: Plasma closure
+
+# Step 1 of the Plasma migration (docs/skills/plasma-migration.md), run where
+# the network is: resolve the package contract, with Fedora 44 at the lowest
+# priority, on the pinned base and factory metadata, and publish what Fedora
+# had to supply. srpms.txt is the package factory's build list. Nothing here
+# builds or publishes an image, and Fedora is enabled only inside the
+# throwaway resolve container.
+
+on:
+  push:
+    branches: ['claude/**']
+    paths:
+      - scripts/plasma-closure.py
+      - packages/utah.toml
+      - packages/bluefin.toml
+      - Containerfile
+      - .github/workflows/plasma-closure.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plasma-closure-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  closure:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Resolve the Plasma closure
+        run: python3 scripts/plasma-closure.py --engine podman
+
+      - name: Summary
+        if: always()
+        run: |
+          if [[ -f output/plasma-closure/summary.md ]]; then
+            cat output/plasma-closure/summary.md >> "$GITHUB_STEP_SUMMARY"
+            {
+              echo
+              echo '## Fedora source packages to build'
+              echo
+              echo '```'
+              cat output/plasma-closure/srpms.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo '--- srpms.txt ---'
+            cat output/plasma-closure/srpms.txt
+          else
+            echo 'The resolver produced no summary; see the step log.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: plasma-closure
+          path: output/plasma-closure/
+          if-no-files-found: warn
