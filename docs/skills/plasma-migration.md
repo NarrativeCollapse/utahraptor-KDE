@@ -147,6 +147,28 @@ factory rebuild absorbs. It also exposed that dnf5 does not expand `\t` in
 `--queryformat`; formats use a space separator now and `query_lines()`
 tolerates a literal `\n`.
 
+The Fedora-side resolve counts **hard dependencies only**
+(`install_weak_deps=False`) and carries **no PackageKit exclusion**. With weak
+dependencies counted, the third run asked for 430 sources, including qemu,
+xen, vlc and most of KDE Frameworks 5; the image skips an unavailable weak
+dependency, so the factory need not build them. The exclusion is the image's
+policy, and Fedora's `kf6-frameworkintegration-libs` links
+`libpackagekitqt6`, so with it nothing from Breeze up resolved.
+
+First usable result (run 36215510576, commit 9ae5c9c): the requested set
+pulls 843 sources in Fedora 44; Hummingbird, the factory and the base carry
+547; **296** remain. `fedora-release` is among them only because the plain
+Fedora container ships it -- drop it by hand. That list, minus
+`fedora-release`, is the factory fork's `config/plasma-sources.txt`
+(NarrativeCollapse/utah-packages, branch `claude/vibrant-goodall-h3kfvk`).
+
+**Open issue for the first image build:** `install-packages.py` installs with
+`-x PackageKit*` (Bluefin: no second package manager writing to `/usr`). That
+exclusion also hides `PackageKit-Qt6`, which `kf6-frameworkintegration-libs`
+needs, so the Plasma install will fail until either the factory builds
+frameworkintegration without PackageKit support or the exclusion is narrowed
+to the PackageKit daemon.
+
 Results land in `output/plasma-closure/` (git-ignored; in CI, the
 `plasma-closure` artifact and the job summary):
 
