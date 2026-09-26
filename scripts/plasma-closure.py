@@ -333,8 +333,9 @@ def inside(args: argparse.Namespace) -> int:
               "unavailable packages skipped to measure the rest", flush=True)
         text = run_dnf(dnf, repos, packages, skip=True, log=IN_OUT / "dnf-skip-broken.log")
         if not resolved(text):
-            print("the resolver failed even with --skip-broken; see dnf-skip-broken.log",
+            print("the resolver failed even with --skip-broken; the end of dnf-skip-broken.log:",
                   file=sys.stderr)
+            print("\n".join(text.splitlines()[-40:]), file=sys.stderr)
             return 1
 
     rows = parse_transaction(text)
@@ -370,7 +371,9 @@ def inside_fedora() -> int:
                             check=False)
     (IN_OUT / "dnf-fedora.log").write_text(result.stdout)
     if not resolved(result.stdout):
-        print("the Fedora-side resolve failed; see dnf-fedora.log", file=sys.stderr)
+        # CI surfaces the job log, not the artifact, first: say why here.
+        print("the Fedora-side resolve failed; the end of dnf-fedora.log:", file=sys.stderr)
+        print("\n".join(result.stdout.splitlines()[-40:]), file=sys.stderr)
         return 1
     rows = parse_transaction(result.stdout)
     # Packages already in the container are part of the closure too.
