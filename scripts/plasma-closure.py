@@ -363,7 +363,11 @@ def inside_fedora() -> int:
     """Resolve the requested set in plain Fedora 44 and map it to sources."""
     dnf = shutil.which("dnf5") or shutil.which("dnf")
     packages = [p for p in (IN_OUT / "requested.txt").read_text().split() if p]
-    args = [dnf, "--assumeno", "-x", "PackageKit*", "install"]
+    # No PackageKit exclusion here, unlike the image's own install: this pass
+    # measures the true closure, and Fedora's kf6-frameworkintegration-libs
+    # links libpackagekitqt6, so excluding PackageKit* leaves all of Breeze
+    # and everything above it unresolvable (second CI run, 2026-09-26).
+    args = [dnf, "--assumeno", "install"]
     args += (["--skip-unavailable"] if Path(dnf).name == "dnf5" else ["--setopt=strict=False"])
     print("+", " ".join(args), f"... ({len(packages)} packages)", flush=True)
     result = subprocess.run(args + packages, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
