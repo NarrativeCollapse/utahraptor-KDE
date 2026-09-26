@@ -36,16 +36,18 @@ One logical change per PR:
 
 1. **Measure the closure** (`just plasma-closure`, below). Produces the
    factory build list. Not merged into any image.
-2. **Plasma package factory.** Build the source packages from step 1 against
-   Hummingbird and publish a digest-pinned OCI repository, as `utah-packages`
-   does for GNOME. The factory is the fork `NarrativeCollapse/utah-packages`.
-   Its importer (`tools/import_bluefin_rawhide.py`, workflow
-   `import-bluefin-rawhide.yml`) imports the Rawhide recipe for each *named*
-   binary's source package and does not follow dependencies, so it is fed
-   the step 1 closure, not just `[plasma]`. Its publish path already follows
-   `github.repository_owner`; its buildroot image is still upstream's public
-   `ghcr.io/projectbluefin/utah-buildroot`, which a fork can pull but whose
-   weekly refresh it cannot push.
+2. **Plasma package factory** (in progress). The fork
+   `NarrativeCollapse/utah-packages` (branch `claude/vibrant-goodall-h3kfvk`)
+   imports each source in step 1's build list from Fedora dist-git `f44`,
+   locks every Source0 to an upstream release, and generates the repacks
+   Fedora made by hand (7zip, opencv, qtwebengine). Four sources with no
+   upstream release at all (desktop-backgrounds, f44-backgrounds,
+   redhat-menus, poly2tri) and assimp are trimmed out: the recipes that
+   required them carry marked edits instead. Its own skill,
+   `docs/skills/plasma-recipes.md` there, has the details. Remaining: merge
+   the branch to the fork's `main`, enable its "Build verified upstream RPMs"
+   workflow, work through build failures (missing BuildRequires surface
+   there), then pin `PACKAGE_IMAGE_SHA` here.
 3. **Remove the GNOME Shell extensions** (done): the `.gitmodules`
    submodules, `build-gnome-extensions.sh`, `verify-gnome-extensions.py`, the
    `[build]` toolchain section in `utah.toml` and its removal in
@@ -161,6 +163,13 @@ pulls 843 sources in Fedora 44; Hummingbird, the factory and the base carry
 Fedora container ships it -- drop it by hand. That list, minus
 `fedora-release`, is the factory fork's `config/plasma-sources.txt`
 (NarrativeCollapse/utah-packages, branch `claude/vibrant-goodall-h3kfvk`).
+A rerun lists five sources the fork deliberately trims (assimp,
+desktop-backgrounds, f44-backgrounds, poly2tri, redhat-menus); leave them out
+of the list again.
+
+**First boot check (trim):** without redhat-menus, Kickoff's categories rely
+on Plasma's own `plasma-applications.menu`; confirm category names and icons
+render (redhat-menus also shipped `/usr/share/desktop-directories`).
 
 **PackageKit (resolved):** Bluefin's `-x PackageKit*` also hid
 `PackageKit-Qt6`, which `kf6-frameworkintegration-libs` links, so nothing
