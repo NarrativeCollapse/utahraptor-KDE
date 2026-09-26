@@ -128,23 +128,45 @@ What it does (`scripts/plasma-closure.py`):
   Fedora contributes only what Hummingbird and the factory lack.
 - If the strict transaction fails, saves the solver problems and retries with
   broken and unavailable packages skipped, so the rest is still measured.
+  It also records every source package the install repositories and the base
+  image already carry (`provided-sources.txt`).
+- Resolves the same requested set in a plain `quay.io/fedora/fedora:44`
+  container, where it installs cleanly, and maps every package in that
+  closure -- the container's own packages included -- to its source.
+- Subtracts the provided sources from the Fedora closure's sources. What is
+  left is `srpms.txt`, the factory's build list.
 
-Results land in `output/plasma-closure/` (git-ignored):
+Why two resolves. The first CI run (2026-09-26) showed the Hummingbird-side
+resolve alone cannot produce the list: Fedora 44's Qt 6 and KDE binaries are
+built against ICU 77 and Hummingbird ships ICU 78 (and Hummingbird carries
+its own `qt6-qtbase` 6.11 built against 78), so nearly every Fedora Qt/KDE
+package conflicts and `--skip-broken` drops whole subtrees -- kwin,
+plasma-workspace, plasma-login-manager and everything under them. That run
+is still worth reading for its solver problems: they name the ABI skews the
+factory rebuild absorbs. It also exposed that dnf5 does not expand `\t` in
+`--queryformat`; formats use a space separator now and `query_lines()`
+tolerates a literal `\n`.
+
+Results land in `output/plasma-closure/` (git-ignored; in CI, the
+`plasma-closure` artifact and the job summary):
 
 | file | read it for |
 |---|---|
-| `summary.md` | counts by origin, number of Fedora source packages, problems |
+| `summary.md` | counts, the build list, solver problems, unmatched names |
 | `srpms.txt` | the factory build list, one source package per line |
-| `closure.tsv` | every package, its repository, origin and Fedora SRPM |
-| `dnf-strict.log`, `dnf-skip-broken.log` | raw resolver output |
+| `fedora-closure.tsv` | every package in the Fedora-side closure and its SRPM |
+| `provided-sources.txt` | sources Hummingbird, the factory and the base carry |
+| `closure.tsv`, `srpms-first-cut.txt` | the Hummingbird-side resolve |
+| `dnf-strict.log`, `dnf-skip-broken.log`, `dnf-fedora.log` | raw resolver output |
 
 Reading the result:
 
-- **`fedora` origin rows** are what the factory must build; `srpms.txt`
-  collapses them to source packages, which is the unit of factory work.
-- **Solver problems** name Fedora packages whose dependencies Hummingbird
-  cannot satisfy (version skew). The factory rebuild absorbs these; they also
-  flag where a rebuilt Hummingbird library may be needed.
+- **`srpms.txt`** is runtime closure only. Build-only dependencies
+  (BuildRequires) are not in it; the factory's wave solver surfaces them when
+  a recipe cannot build.
+- **Solver problems** in the Hummingbird-side resolve name Fedora packages
+  whose dependencies Hummingbird cannot satisfy (version skew). The factory
+  rebuild absorbs these.
 - **Upgrading or Replacing rows** mean Fedora would replace a base package.
   Priority should prevent it; if one appears, the factory needs that package
   too, or the pin is wrong.

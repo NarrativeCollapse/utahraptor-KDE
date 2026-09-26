@@ -6,25 +6,38 @@ Hummingbird nor a Fedora release ships it. A Plasma desktop is in the same
 position, so before any factory work starts this answers one question: which
 packages, and which source RPMs, would the factory have to build?
 
-It resolves -- never installs -- one transaction on the pinned base image:
-Utah's package contract, whose [plasma] section is the desktop, against Utah's own install repositories plus Fedora 44 at the lowest
+It resolves -- never installs -- in two containers, then subtracts.
+
+On the pinned base image it resolves the package contract, whose [plasma]
+section is the desktop, against Utah's own install repositories plus Fedora 44 at the lowest
 priority. Because dnf drops any package from a lower-priority repository whose
 name a higher-priority one carries, Fedora supplies only what Hummingbird and
 the factory do not have. Everything the transaction takes from Fedora is
-therefore the factory's build list.
+a first cut of the factory's build list -- but only a first cut, because
+Fedora's Qt and KDE binaries are built against Fedora's libraries (ICU 77
+where Hummingbird ships ICU 78, for one), so most of them cannot install on
+Hummingbird at all and the resolver skips whole subtrees. The same pass
+records every source package Hummingbird and the factory already build.
+
+So the requested set is also resolved in a plain Fedora 44 container, where
+it installs cleanly, and every package in that closure is mapped to its
+source. Those sources minus what Hummingbird and the factory already build
+is the build list: srpms.txt.
 
 This is an experiment, not a build input. Fedora is enabled only inside a
 throwaway container for the resolve, never in an image; the invariant in
 AGENTS.md that Fedora repositories are never enabled at runtime is unchanged.
 
 Outputs, under --out (default output/plasma-closure/):
-  closure.tsv   every package in the transaction, its repository and SRPM
-  srpms.txt     unique Fedora source packages: the factory's build list
-  summary.md    counts by origin, solver problems, unmatched names
-  dnf-*.log     the raw resolver output each attempt produced
+  srpms.txt             the factory's build list (Fedora closure minus provided)
+  summary.md            counts, the build list, solver problems, unmatched names
+  closure.tsv           the Hummingbird-side transaction, repository and SRPM
+  fedora-closure.tsv    the Fedora-side transaction and each package's SRPM
+  provided-sources.txt  sources Hummingbird, the factory and the base carry
+  dnf-*.log             the raw resolver output each attempt produced
 
 Needs podman (or --engine docker) and network access to ghcr.io, quay.io,
-packages.redhat.com and dl.fedoraproject.org. See docs/skills/plasma-migration.md.
+packages.redhat.com and the Fedora mirrors. See docs/skills/plasma-migration.md.
 """
 
 from __future__ import annotations
@@ -48,6 +61,9 @@ from typing import NamedTuple
 # [not_on_plasma] section drops them from the contract itself.
 
 FEDORA_REPOS = ("fedora-44", "fedora-44-updates")
+# The plain Fedora 44 container the Fedora-side closure is resolved in; the
+# factory's own build lanes use the same image.
+FEDORA_IMAGE = "quay.io/fedora/fedora:44"
 FEDORA_PRIORITY = 99
 
 ARCHES = ("x86_64", "noarch", "i686", "aarch64")
@@ -204,23 +220,65 @@ def run_dnf(dnf: str, repos: list[str], packages: list[str], *, skip: bool,
     return result.stdout
 
 
-def sourcerpms(dnf: str, names: list[str]) -> dict[str, str]:
+def query_lines(output: str) -> list[list[str]]:
+    """Whitespace-split records from repoquery/rpm --queryformat output.
+
+    dnf4 expands a \\n in the format and appends its own newline; dnf5
+    expands it; neither is guaranteed to expand \\t -- the first CI run got
+    literal backslash-t and parsed nothing. So the format uses a space as the
+    field separator, and a literal backslash-n left in the output is treated
+    as the line break it was meant to be.
+    """
+    text = output.replace("\\n", "\n")
+    return [line.split() for line in text.splitlines() if line.strip()]
+
+
+def sourcerpms(dnf: str, names: list[str], repos: tuple[str, ...] | None = FEDORA_REPOS
+               ) -> dict[str, str]:
+    """Map binary package names to their source RPM file names."""
     if not names:
         return {}
+    repo_args = ["--disablerepo=*", *(f"--enablerepo={r}" for r in repos)] if repos else []
     result = subprocess.run(
-        [dnf, "repoquery", "--disablerepo=*",
-         *(f"--enablerepo={r}" for r in FEDORA_REPOS),
-         "--latest-limit=1", "--arch=x86_64,noarch",
-         "--queryformat", "%{name}\\t%{sourcerpm}\\n", *names],
+        [dnf, "repoquery", *repo_args, "--latest-limit=1", "--arch=x86_64,noarch",
+         "--queryformat", "%{name} %{sourcerpm}\\n", *names],
         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
         env={**os.environ, "LC_ALL": "C"}, check=False,
     )
     found: dict[str, str] = {}
-    for line in result.stdout.splitlines():
-        parts = line.split("\t")
-        if len(parts) == 2 and parts[1].endswith(".rpm"):
-            found.setdefault(parts[0], parts[1])
+    for fields in query_lines(result.stdout):
+        if len(fields) == 2 and fields[1].endswith(".rpm"):
+            found.setdefault(fields[0], fields[1])
     return found
+
+
+def provided_sources(dnf: str, repos: list[str]) -> set[str]:
+    """Source package names Hummingbird, the factory and the base already carry.
+
+    Everything the install repositories offer, plus everything installed in
+    the base image: a source in this set needs no factory recipe.
+    """
+    names: set[str] = set()
+    available = subprocess.run(
+        [dnf, "repoquery", "--disablerepo=*", *(f"--enablerepo={r}" for r in repos),
+         "--queryformat", "%{sourcerpm}\\n"],
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+        env={**os.environ, "LC_ALL": "C"}, check=False,
+    ).stdout
+    installed = subprocess.run(
+        ["rpm", "-qa", "--queryformat", "%{SOURCERPM}\\n"],
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=False,
+    ).stdout
+    for fields in query_lines(available + "\n" + installed):
+        for field in fields:
+            if field.endswith(".rpm"):
+                names.add(source_name(field))
+    return names
+
+
+def build_list(fedora_sources: set[str], provided: set[str]) -> list[str]:
+    """What the factory has to build: the Fedora closure's sources it lacks."""
+    return sorted(fedora_sources - provided)
 
 
 def summarize(rows: list[Row], srpm: dict[str, str], *, strict_ok: bool,
@@ -237,7 +295,7 @@ def summarize(rows: list[Row], srpm: dict[str, str], *, strict_ok: bool,
         f"- Requested packages: {requested}",
         f"- Strict transaction resolved: {'yes' if strict_ok else 'no'}",
         f"- Packages in transaction: {len(rows)}",
-        f"- Fedora source packages the factory would build: **{len(sources)}**",
+        f"- Fedora-origin sources in this resolve (first cut): {len(sources)}",
         "",
         "| origin | packages |",
         "| --- | ---: |",
@@ -288,13 +346,75 @@ def inside(args: argparse.Namespace) -> int:
             out.write(f"{r.action}\t{r.name}\t{r.arch}\t{r.evr}\t{r.repo}\t"
                       f"{origin(r.repo)}\t{srpm.get(r.name, '')}\n")
     sources = sorted({source_name(srpm[n]) for n in fedora_names if n in srpm})
-    (IN_OUT / "srpms.txt").write_text("".join(f"{s}\n" for s in sources))
+    (IN_OUT / "srpms-first-cut.txt").write_text("".join(f"{s}\n" for s in sources))
+    provided = provided_sources(dnf, list(installer.install_repos(Path("/etc/yum.repos.d"))))
+    (IN_OUT / "provided-sources.txt").write_text("".join(f"{s}\n" for s in sorted(provided)))
     summary = summarize(rows, srpm, strict_ok=strict_ok,
                         strict_problems=problems(strict),
                         missing=sorted(set(unmatched(strict)) | set(unmatched(text))),
                         requested=len(packages))
     (IN_OUT / "summary.md").write_text(summary + "\n")
     print(summary)
+    return 0
+
+
+def inside_fedora() -> int:
+    """Resolve the requested set in plain Fedora 44 and map it to sources."""
+    dnf = shutil.which("dnf5") or shutil.which("dnf")
+    packages = [p for p in (IN_OUT / "requested.txt").read_text().split() if p]
+    args = [dnf, "--assumeno", "-x", "PackageKit*", "install"]
+    args += (["--skip-unavailable"] if Path(dnf).name == "dnf5" else ["--setopt=strict=False"])
+    print("+", " ".join(args), f"... ({len(packages)} packages)", flush=True)
+    result = subprocess.run(args + packages, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                            text=True, env={**os.environ, "LC_ALL": "C", "COLUMNS": "400"},
+                            check=False)
+    (IN_OUT / "dnf-fedora.log").write_text(result.stdout)
+    if not resolved(result.stdout):
+        print("the Fedora-side resolve failed; see dnf-fedora.log", file=sys.stderr)
+        return 1
+    rows = parse_transaction(result.stdout)
+    # Packages already in the container are part of the closure too.
+    installed = subprocess.run(["rpm", "-qa", "--queryformat", "%{NAME} %{SOURCERPM}\\n"],
+                               stdout=subprocess.PIPE, text=True, check=False).stdout
+    srpm = {f[0]: f[1] for f in query_lines(installed) if len(f) == 2 and f[1].endswith(".rpm")}
+    srpm.update(sourcerpms(dnf, sorted({r.name for r in rows}), repos=None))
+    with (IN_OUT / "fedora-closure.tsv").open("w") as out:
+        out.write("name\tevr\trepo\tsourcerpm\n")
+        for r in sorted(rows, key=lambda r: r.name):
+            out.write(f"{r.name}\t{r.evr}\t{r.repo}\t{srpm.get(r.name, '')}\n")
+    sources = sorted({source_name(v) for v in srpm.values()})
+    (IN_OUT / "fedora-sources.txt").write_text("".join(f"{s}\n" for s in sources))
+    (IN_OUT / "fedora-unmatched.txt").write_text(
+        "".join(f"{n}\n" for n in unmatched(result.stdout)))
+    print(f"Fedora closure: {len(rows)} packages to install, {len(sources)} source packages")
+    return 0
+
+
+def combine(out: Path) -> int:
+    """Subtract what Hummingbird and the factory carry from the Fedora closure."""
+    read = lambda name: {l for l in (out / name).read_text().split() if l}
+    fedora, provided = read("fedora-sources.txt"), read("provided-sources.txt")
+    build = build_list(fedora, provided)
+    (out / "srpms.txt").write_text("".join(f"{s}\n" for s in build))
+    unmatched_names = sorted(read("fedora-unmatched.txt"))
+    section = [
+        "",
+        "## Factory build list",
+        "",
+        f"The requested set resolved in plain Fedora 44 pulls in {len(fedora)} source",
+        f"packages. Hummingbird, the factory and the base image already carry",
+        f"{len(fedora & provided)} of them, which leaves **{len(build)}** for the factory",
+        "to import and build (`srpms.txt`). Build-only dependencies are not in this",
+        "list; the factory's build order surfaces them.",
+        "",
+    ]
+    if unmatched_names:
+        section += ["Names Fedora 44 does not carry at all:", "",
+                    *(f"- `{n}`" for n in unmatched_names), ""]
+    section += ["```", *build, "```", ""]
+    with (out / "summary.md").open("a") as summary:
+        summary.write("\n".join(section))
+    print("\n".join(section))
     return 0
 
 
@@ -321,7 +441,7 @@ def host(args: argparse.Namespace) -> int:
         # Resolution needs only repodata; the factory's metadata layer is the
         # digest-verified subset check-repos already uses.
         checker.repository_metadata(packages, Path(tmp))
-        return subprocess.run([
+        rc = subprocess.run([
             args.engine, "run", "--rm", "--platform", "linux/amd64",
             "-v", f"{tmp}:/etc/utah-packages:ro,Z",
             "-v", f"{root / 'packages'}:/etc/yum.repos.d:ro,Z",
@@ -330,6 +450,19 @@ def host(args: argparse.Namespace) -> int:
             base, "python3", f"{IN_SRC}/scripts/plasma-closure.py", "--inside",
             *passthrough,
         ], check=False).returncode
+    if rc:
+        return rc
+    print(f"Resolving the same set in {FEDORA_IMAGE}", flush=True)
+    rc = subprocess.run([
+        args.engine, "run", "--rm", "--platform", "linux/amd64",
+        "-v", f"{root}:{IN_SRC}:ro,Z",
+        "-v", f"{out}:{IN_OUT}:rw,Z",
+        # A plain Fedora container need not carry Python; install it if not.
+        FEDORA_IMAGE, "bash", "-c",
+        "command -v python3 >/dev/null || dnf -y -q install python3 >/dev/null; "
+        f"exec python3 {IN_SRC}/scripts/plasma-closure.py --inside-fedora",
+    ], check=False).returncode
+    return rc or combine(out)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -341,7 +474,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--extra", action="append", default=[], metavar="PKG",
                         help="add a package to the transaction (repeatable)")
     parser.add_argument("--inside", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--inside-fedora", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    if args.inside_fedora:
+        return inside_fedora()
     return inside(args) if args.inside else host(args)
 
 

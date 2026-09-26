@@ -7,6 +7,7 @@ package-set composition, so a malformed report cannot pass as a measurement.
 """
 
 import importlib.util
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -133,11 +134,39 @@ class Classification(unittest.TestCase):
                 "kwin": "kwin-6.4.5-1.fc44.src.rpm"}
         text = closure.summarize(rows, srpm, strict_ok=False, strict_problems=["Problem 1: x"],
                                  missing=["sddm-wayland-plasma"], requested=2)
-        self.assertIn("Fedora source packages the factory would build: **4**", text)
+        self.assertIn("Fedora-origin sources in this resolve (first cut): 4", text)
         self.assertIn("| fedora | 4 |", text)
         self.assertIn("| factory | 1 |", text)
         self.assertIn("Upgrading: `libfoo`", text)
         self.assertIn("`sddm-wayland-plasma`", text)
+
+
+class QueryOutput(unittest.TestCase):
+    def test_real_and_literal_newlines_both_split_records(self):
+        # The first CI run: dnf5 left the format's escapes unexpanded.
+        self.assertEqual(closure.query_lines("a a-1-1.fc44.src.rpm\\nb b-2-1.fc44.src.rpm\\n"),
+                         [["a", "a-1-1.fc44.src.rpm"], ["b", "b-2-1.fc44.src.rpm"]])
+        self.assertEqual(closure.query_lines("a a-1-1.src.rpm\n\n(none)\n"),
+                         [["a", "a-1-1.src.rpm"], ["(none)"]])
+
+
+class BuildList(unittest.TestCase):
+    def test_the_build_list_is_the_fedora_closure_minus_what_is_provided(self):
+        self.assertEqual(closure.build_list({"kwin", "qt6-qtbase", "glibc"}, {"glibc", "qt6-qtbase"}),
+                         ["kwin"])
+
+    def test_combine_writes_srpms_and_appends_the_list_to_the_summary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            (out / "fedora-sources.txt").write_text("kwin\nplasma-workspace\nglibc\n")
+            (out / "provided-sources.txt").write_text("glibc\n")
+            (out / "fedora-unmatched.txt").write_text("sddm-wayland-plasma\n")
+            (out / "summary.md").write_text("# first\n")
+            self.assertEqual(closure.combine(out), 0)
+            self.assertEqual((out / "srpms.txt").read_text(), "kwin\nplasma-workspace\n")
+            summary = (out / "summary.md").read_text()
+            self.assertIn("leaves **2** for the factory", summary)
+            self.assertIn("`sddm-wayland-plasma`", summary)
 
 
 class PackageSet(unittest.TestCase):
